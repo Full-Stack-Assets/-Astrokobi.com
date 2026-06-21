@@ -81,6 +81,26 @@ npm run dev
 
 Open http://localhost:3000. The seed post is visible out of the box; new posts show up as soon as `npm run generate` writes them.
 
+### Backfill a starter catalog (optional)
+
+`npm run generate` writes about whatever is *trending right now*, so a fresh site
+fills in one post per hour. To stand up a real back catalog immediately, the
+**seed runner** generates posts from a curated list of evergreen astronomy
+topics (`scripts/seed-topics.ts`) through the exact same write path:
+
+```bash
+npm run seed -- --dry          # research + write one topic, print it, write nothing
+npm run seed -- --limit=10     # write the first 10 not-yet-covered topics
+npm run seed                   # write every not-yet-covered topic
+```
+
+It needs `GEMINI_API_KEY` and `BRAVE_API_KEY` (evergreen topics have no source
+URL of their own, so research relies on web search). It's idempotent — already
+covered topics are skipped via the topic log, so you can stop and re-run — and it
+spreads post dates backward over recent days (`--interval-days`) so the catalog
+reads as history rather than one burst. Edit `scripts/seed-topics.ts` to change
+the list.
+
 ---
 
 ## Deploy

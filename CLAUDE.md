@@ -31,8 +31,9 @@ Two known leftovers, both **content, not code**, and intentionally not rewritten
 
 - Almost every file in `content/posts/` is a **tech/AI** article inherited from
   the original site, not space/astronomy. These are sample/seed content; the
-  hourly pipeline will accrete real space posts over time. Don't assume the niche
-  from these posts — trust `src/site.config.ts`.
+  hourly pipeline will accrete real space posts over time (or run `npm run seed`
+  to backfill on-niche posts now — see the seed entrypoint below). Don't assume
+  the niche from these posts — trust `src/site.config.ts`.
 - Their frontmatter `category` values (e.g. `opinion`, `tools`, `engineering`)
   are from the old taxonomy and aren't all in `siteConfig.categories`. Pages
   render them fine, but they won't all map to nav categories.
@@ -66,6 +67,8 @@ npm run lint             # next lint (eslint 9)
 
 npm run generate         # tsx scripts/run-local.ts — run the pipeline, WRITE mdx to disk (no commit)
 npm run generate -- --dry  # dry run: print the post, write nothing
+npm run seed             # tsx scripts/seed.ts — backfill a catalog from curated evergreen topics
+npm run seed -- --dry      # seed dry run: research+write one topic, write nothing
 npm run digest           # tsx scripts/newsletter-digest.ts — send the weekly digest
 npx tsx scripts/smoke-test.ts   # hit every source fetcher against live APIs
 ```
@@ -112,6 +115,15 @@ source returns `[]` instead of killing the run):
 `scripts/run-local.ts` always calls `runPipeline({ dryRun: true })` (so it never
 commits via Octokit), writes the MDX itself, updates the **local**
 `content/.topic-log.json`, then best-effort syndicates (non-fatal).
+
+**Second entrypoint — `generateForTopic(topic, opts)`** (also in `pipeline.ts`):
+the engine behind `scripts/seed.ts`. It skips stages 1–2, synthesizes a "winner"
+from an explicit evergreen topic string (no source URL), and runs the same
+research → generate → image → serialize path. `serialize()` takes an optional
+`date` so seeded posts can be spread across recent history. Use it to backfill a
+real catalog on demand instead of waiting for the hourly trend-driven pipeline;
+the curated list lives in `scripts/seed-topics.ts`. Requires `BRAVE_API_KEY`
+(the topic has no URL, so research depends on web search).
 
 ### Key data shapes (`orchestrator/types.ts`)
 

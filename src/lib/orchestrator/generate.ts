@@ -204,7 +204,7 @@ function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle)
       title: `${t.title} (video)`,
       url: `https://www.youtube.com/watch?v=${t.videoId}`,
     })),
-  ];
+  ].filter((s) => s.url.trim().length > 0); // drop sourceless entries (e.g. an evergreen seed topic has no winner URL)
 
   return {
     ...validated,
