@@ -14,23 +14,28 @@ The engine is **niche-agnostic and template-driven**: everything that makes it
 *this* site lives in `src/site.config.ts`. Change that one file (plus secrets and
 a deploy target) and the same engine runs a different site. See `CREATE-A-SITE.md`.
 
-### ⚠️ Important: this repo is a partially re-skinned template
+### This repo is a re-skinned instance of the engine
 
 `src/site.config.ts` is configured for **AstroKobi** — a *space & astronomy*
-niche (`url: https://astrokobi.com`). But a lot of the older surface area still
-carries the original template's **"Wire and Logic"** tech-news branding:
+niche (`url: https://astrokobi.com`). The codebase, README, About page, RSS feed,
+seed post, package name, bot identity, and source User-Agents have all been
+de-branded from the original **"Wire and Logic"** tech-news template and now
+read their name/URL/niche from `siteConfig`. The TinaCMS category dropdown is
+also derived from `siteConfig.categories`.
 
-- The hardcoded string **"Wire and Logic"** appears in `src/app/about/page.tsx`,
-  `src/app/blog/[slug]/page.tsx` (the "Back to Wire and Logic" link),
-  `README.md`, and the seed post `content/posts/welcome-to-the-dispatch.mdx`.
-- Almost every file in `content/posts/` is a **tech/AI** article (left over from
-  the original site), not space/astronomy.
+**Rule going forward: read branding/niche from `siteConfig` — never hardcode a
+site name, URL, or niche.** That keeps the engine portable (see
+`CREATE-A-SITE.md`).
 
-When asked to "fix branding" or make the site consistent, prefer reading the
-canonical values from `siteConfig` (`siteConfig.name`, etc.) instead of
-hardcoding. Don't assume the niche from the existing posts — trust
-`src/site.config.ts`. Flag, don't silently "correct", these inconsistencies
-unless explicitly asked.
+Two known leftovers, both **content, not code**, and intentionally not rewritten:
+
+- Almost every file in `content/posts/` is a **tech/AI** article inherited from
+  the original site, not space/astronomy. These are sample/seed content; the
+  hourly pipeline will accrete real space posts over time. Don't assume the niche
+  from these posts — trust `src/site.config.ts`.
+- Their frontmatter `category` values (e.g. `opinion`, `tools`, `engineering`)
+  are from the old taxonomy and aren't all in `siteConfig.categories`. Pages
+  render them fine, but they won't all map to nav categories.
 
 ## Tech stack
 
@@ -48,8 +53,7 @@ unless explicitly asked.
   (`content/.topic-log.json`) is the only piece of mutable state.
 - **Zod** validates the LLM's JSON output.
 - Package manager: the repo ships `package-lock.json`, and CI uses `npm ci`.
-  **Use `npm`.** (The README's `pnpm` commands work too, but npm is the source of
-  truth for CI.) Node 20+.
+  **Use `npm`.** Node 20+.
 
 ## Commands
 
@@ -210,9 +214,10 @@ note the empty-string guard, since unset CI secrets arrive as `""`).
 - **Empty-string env vars.** Unset GitHub Actions secrets are passed through as
   `""`, not `undefined`. Guard with explicit length/`trim()` checks (as
   `structured-data.ts` and `newsletter-digest.ts` already do), not just `??`.
-- **Read config, don't hardcode.** Pull branding/niche from `siteConfig` so the
-  template stays portable. (The "Wire and Logic" hardcodes noted above are debt,
-  not a pattern to copy.)
+- **Read config, don't hardcode.** Pull branding/niche from `siteConfig` (or the
+  `SITE_NAME`/`SITE_URL`/`SITE_DESCRIPTION` re-exports in `structured-data.ts`)
+  so the template stays portable. The codebase has been fully de-branded — keep
+  it that way; don't reintroduce a hardcoded site name.
 - Keep the four MDX-contract definitions in sync (prompt, schema, components,
   Tina templates).
 - The topic log is append-only and merge-driver-managed; don't restructure it
