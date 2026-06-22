@@ -3,6 +3,10 @@ import { siteConfig } from '@/site.config';
 
 const SUBREDDITS = siteConfig.sources.subreddits;
 
+// Reddit asks for a descriptive User-Agent identifying the app. Derive it from
+// the site config so it stays accurate when the template is re-skinned.
+const USER_AGENT = `${siteConfig.name.replace(/\s+/g, '')}:v1.0 (+${siteConfig.url})`;
+
 /**
  * Reddit requires OAuth2 "application only" auth for server-side requests.
  * This is free and doesn't require a Reddit user account to act on behalf of.
@@ -27,7 +31,7 @@ async function getAccessToken(): Promise<string | null> {
     headers: {
       'authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       'content-type': 'application/x-www-form-urlencoded',
-      'user-agent': 'trendblog:v0.1.0 (by /u/trendblog)',
+      'user-agent': USER_AGENT,
     },
     body: 'grant_type=client_credentials',
   });
@@ -53,7 +57,7 @@ export async function fetchReddit(): Promise<RawItem[]> {
   }
 
   const items: RawItem[] = [];
-  const ua = 'trendblog:v0.1.0 (by /u/trendblog)';
+  const ua = USER_AGENT;
 
   for (const sub of SUBREDDITS) {
     try {

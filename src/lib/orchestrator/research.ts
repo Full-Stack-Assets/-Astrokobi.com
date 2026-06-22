@@ -1,6 +1,10 @@
 import * as cheerio from 'cheerio';
 import { Innertube } from 'youtubei.js';
 import type { ScoredItem, ResearchBundle, RawItem } from './types';
+import { siteConfig } from '@/site.config';
+
+// Polite, identifiable scraper UA derived from the site config.
+const SCRAPER_UA = `Mozilla/5.0 (compatible; ${siteConfig.name.replace(/\s+/g, '')}/1.0; +${siteConfig.url})`;
 
 interface BraveWebResult {
   url: string;
@@ -30,7 +34,7 @@ async function scrapeArticle(url: string): Promise<{ title: string; content: str
     const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; trendblog/0.1)' },
+      headers: { 'user-agent': SCRAPER_UA },
     });
     clearTimeout(timeout);
     if (!res.ok) return null;
