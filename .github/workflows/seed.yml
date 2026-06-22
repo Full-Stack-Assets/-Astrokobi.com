@@ -62,7 +62,29 @@ jobs:
           BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
           # Optional: hero images (falls back to keyless Openverse, then none).
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        run: npx tsx scripts/seed.ts --limit=${{ inputs.limit }} --interval-days=${{ inputs.interval_days }} --delay=2000
+          # Pass inputs via env (never interpolate ${{ }} into the shell) so a
+          # crafted input value can't inject commands into this run step.
+          LIMIT: ${{ inputs.limit }}
+          INTERVAL_DAYS: ${{ inputs.interval_days }}
+          PURGED: ${{ inputs.purge }}
+        run: |
+          npx tsx scripts/seed.ts --limit="$LIMIT" --interval-days="$INTERVAL_DAYS" --delay=2000
+
+          # Guard against the destructive purge + nothing-generated case: if we
+          # deleted the existing catalog but wrote no replacement (e.g. a missing
+          # BRAVE_API_KEY makes every topic skip), fail now so the commit step
+          # never pushes an empty catalog to the live site. Count only new/changed
+          # post files (porcelain status not starting with 'D'), excluding the
+          # purge's own deletions. `|| true` keeps the count safe under pipefail.
+          if [ "$PURGED" = "true" ]; then
+            new_posts=$(git status --porcelain -- content/posts \
+              | grep -E '\.mdx$' | grep -vE '^.D' | wc -l | tr -d ' ' || true)
+            if [ "${new_posts:-0}" -eq 0 ]; then
+              echo "::error::purge was requested but the seed produced 0 new posts — refusing to commit a wiped catalog. Check that GEMINI_API_KEY and BRAVE_API_KEY are set." >&2
+              exit 1
+            fi
+            echo "Purge run wrote ${new_posts} new post(s); proceeding to commit."
+          fi
 
       - name: Commit and push
         env:
