@@ -11,10 +11,10 @@ on:
         description: 'Max topics to generate this run (0 = every not-yet-covered topic). Start small.'
         required: false
         default: '10'
-      interval_days:
-        description: 'Days to space published post dates apart (builds a back-dated catalog).'
+      interval_hours:
+        description: 'Hours to space published post dates apart (builds a back-dated catalog).'
         required: false
-        default: '1'
+        default: '24'
       purge:
         description: 'DESTRUCTIVE: delete inherited posts first (keeps the AstroKobi seed post) and reset the topic log.'
         type: boolean
@@ -65,10 +65,10 @@ jobs:
           # Pass inputs via env (never interpolate ${{ }} into the shell) so a
           # crafted input value can't inject commands into this run step.
           LIMIT: ${{ inputs.limit }}
-          INTERVAL_DAYS: ${{ inputs.interval_days }}
+          INTERVAL_HOURS: ${{ inputs.interval_hours }}
           PURGED: ${{ inputs.purge }}
         run: |
-          npx tsx scripts/seed.ts --limit="$LIMIT" --interval-days="$INTERVAL_DAYS" --delay=2000
+          npx tsx scripts/seed.ts --limit="$LIMIT" --interval-hours="$INTERVAL_HOURS" --delay=2000
 
           # Guard against the destructive purge + nothing-generated case: if we
           # deleted the existing catalog but wrote no replacement (e.g. a missing
