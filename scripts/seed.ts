@@ -16,11 +16,11 @@
  * web search to find material). PEXELS_API_KEY is optional (hero images).
  *
  * Usage:
- *   npm run seed                       # generate every not-yet-covered topic
- *   npm run seed -- --dry              # research+write the first topic, write nothing
- *   npm run seed -- --limit=10         # only the first 10 not-yet-covered topics
- *   npm run seed -- --interval-days=2  # space post dates 2 days apart (default 1)
- *   npm run seed -- --delay=2000       # ms to wait between topics (default 1500)
+ *   npm run seed                        # generate every not-yet-covered topic
+ *   npm run seed -- --dry               # research+write the first topic, write nothing
+ *   npm run seed -- --limit=10          # only the first 10 not-yet-covered topics
+ *   npm run seed -- --interval-hours=24 # space post dates 24 hours apart (default 24)
+ *   npm run seed -- --delay=2000        # ms to wait between topics (default 1500)
  */
 import 'dotenv/config';
 import fs from 'node:fs/promises';
@@ -58,7 +58,7 @@ async function saveLocalLog(log: TopicLog): Promise<void> {
 async function main() {
   const dryRun = process.argv.includes('--dry');
   const limit = Number(flag('limit', '0')) || Infinity;
-  const intervalDays = Number(flag('interval-days', '1')) || 1;
+  const intervalHours = Number(flag('interval-hours', '24')) || 24;
   const delayMs = Number(flag('delay', '1500'));
 
   const llmKeyEnv = siteConfig.llm.apiKeyEnv;
@@ -105,7 +105,7 @@ async function main() {
     const topic = queue[i];
     // Spread dates backward from now so the catalog reads as history rather than
     // a single burst: earlier in the queue = more recent publish date.
-    const date = new Date(now - i * intervalDays * 86_400_000);
+    const date = new Date(now - i * intervalHours * 3_600_000);
     process.stdout.write(`[${i + 1}/${queue.length}] ${topic} … `);
 
     const res = await generateForTopic(topic, { dryRun: true, date });
