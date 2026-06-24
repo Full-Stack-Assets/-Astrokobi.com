@@ -7,7 +7,36 @@ const LLM_MODEL = siteConfig.llm.model;
 const LLM_KEY_ENV = siteConfig.llm.apiKeyEnv;
 
 /** How many times to ask the model before giving up on a structurally valid post. */
-const MAX_GENERATION_ATTEMPTS = 3;
+const MAX_GENERATION_ATTEMPTS = 5;
+
+/** HTTP statuses worth retrying — rate limits and transient upstream outages
+ *  (Gemini's free tier returns 503 "UNAVAILABLE" under load). Client errors like
+ *  400/401/403 are deliberately absent: retrying them just fails identically. */
+const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+
+/** Carries the HTTP status of a failed LLM call so the retry loop can tell a
+ *  transient outage (back off and retry) from a fatal client error (give up). */
+class LlmError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'LlmError';
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** A network failure (no status) or a retryable HTTP status is worth another try. */
+function isTransient(err: unknown): boolean {
+  if (err instanceof LlmError && err.status !== undefined) return RETRYABLE_STATUS.has(err.status);
+  return true; // fetch/network error — no response at all
+}
+
+/** Exponential backoff with jitter: ~1s, 2s, 4s, 8s … capped at 30s. Spreads the
+ *  retries across a demand spike instead of hammering the same overloaded model. */
+function backoffMs(attempt: number): number {
+  const base = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
+  return base + Math.floor(Math.random() * 500);
+}
 
 /**
  * Collapse whitespace and truncate to at most `max` chars at a word boundary,
@@ -129,7 +158,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
   // genuinely unrepairable misses (too-short body, too-few tags, malformed JSON)
-  // and transient Groq errors, feeding the exact reason back so the model can
+  // and transient LLM errors, feeding the exact reason back so the model can
   // correct itself. Only fail loudly after exhausting attempts.
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const userPrompt =
@@ -141,8 +170,18 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
     try {
       content = await callLlm(key, userPrompt);
     } catch (err) {
-      // Rate limit / 5xx / network blip — worth another attempt.
       lastError = err instanceof Error ? err.message : String(err);
+      // A 400/401/403 fails identically every attempt — stop now instead of
+      // burning the rest. Transient 429/5xx and network blips get a backoff so
+      // the next try lands after the demand spike rather than during it.
+      if (!isTransient(err)) break;
+      if (attempt < MAX_GENERATION_ATTEMPTS) {
+        const wait = backoffMs(attempt);
+        console.warn(
+          `[generate] attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed: ${lastError.slice(0, 140)} — retrying in ${wait}ms`
+        );
+        await sleep(wait);
+      }
       continue;
     }
 
@@ -164,7 +203,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   }
 
   throw new Error(
-    `Groq output failed validation after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
+    `LLM generation failed after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
   );
 }
 
@@ -189,7 +228,7 @@ async function callLlm(key: string, userPrompt: string): Promise<string> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
+    throw new LlmError(`LLM API error ${res.status}: ${text.slice(0, 500)}`, res.status);
   }
 
   const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
