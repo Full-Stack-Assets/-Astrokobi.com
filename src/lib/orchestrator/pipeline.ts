@@ -1,6 +1,4 @@
 import { fetchReddit } from '../sources/reddit';
-import { fetchHackerNews } from '../sources/hackernews';
-import { fetchDevTo } from '../sources/devto';
 import { fetchRss } from '../sources/rss';
 import { fetchYouTube } from '../sources/youtube';
 import { fetchBraveNews } from '../sources/bravenews';
@@ -40,16 +38,18 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineR
   try {
     // ── 1. Gather ─────────────────────────────────────────────────
     const doneGather = t('gather');
-    const [reddit, hn, devto, rss, yt, brave, trends] = await Promise.all([
+    const [reddit, rss, yt, brave, trends] = await Promise.all([
       fetchReddit().catch((e) => { console.warn('reddit', e); return [] as RawItem[]; }),
-      fetchHackerNews().catch((e) => { console.warn('hn', e); return [] as RawItem[]; }),
-      fetchDevTo().catch((e) => { console.warn('devto', e); return [] as RawItem[]; }),
       fetchRss().catch((e) => { console.warn('rss', e); return [] as RawItem[]; }),
       fetchYouTube().catch((e) => { console.warn('yt', e); return [] as RawItem[]; }),
       fetchBraveNews().catch((e) => { console.warn('brave', e); return [] as RawItem[]; }),
       fetchGoogleTrends().catch((e) => { console.warn('googletrends', e); return [] as RawItem[]; }),
     ]);
-    const allItems = [...reddit, ...hn, ...devto, ...rss, ...yt, ...brave, ...trends];
+    // Hacker News and DEV.to are niche-agnostic (general tech-news) sources, so
+    // they injected off-niche winners on this niche site. Excluded here so only
+    // on-niche stories (Reddit / RSS / Brave / YouTube / Google Trends — all
+    // configured for this site's niche in siteConfig.sources) can win.
+    const allItems = [...reddit, ...rss, ...yt, ...brave, ...trends];
     doneGather();
 
     if (allItems.length === 0) {
@@ -60,7 +60,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineR
     const doneScore = t('score');
     const scored = dedupe(score(allItems));
     const topicLog = opts.topicLog ?? (opts.dryRun ? { topics: [] } : await loadTopicLog());
-    const winner = pickWinner(scored, topicLog);
+    // AstroKobi intentionally DISREGARDS the topic log when picking a winner:
+    // the log had saturated, starving the hourly run of fresh winners ("no new
+    // topic"). Pass an empty log so pickWinner returns the top-scored (still
+    // in-run-deduped) candidate regardless of whether it was covered before.
+    // The real topicLog is still loaded above and updated/recorded below.
+    const winner = pickWinner(scored, { topics: [] });
     doneScore();
 
     if (!winner) {
