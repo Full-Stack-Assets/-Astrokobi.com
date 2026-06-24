@@ -230,10 +230,10 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   );
 }
 
-async function callLlm(key: string, userPrompt: string): Promise<string> {
+async function callLlm(provider: LlmProvider, key: string, userPrompt: string): Promise<string> {
   let res: Response;
   try {
-    res = await fetchLlm(key, userPrompt);
+    res = await fetchLlm(provider, key, userPrompt);
   } catch (err) {
     // Network-level failure (DNS, reset, timeout) — no HTTP status, so transient.
     throw new LlmError(`LLM request failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -255,8 +255,8 @@ async function callLlm(key: string, userPrompt: string): Promise<string> {
   return json.choices?.[0]?.message?.content ?? '';
 }
 
-function fetchLlm(key: string, userPrompt: string): Promise<Response> {
-  return fetch(LLM_URL, {
+function fetchLlm(provider: LlmProvider, key: string, userPrompt: string): Promise<Response> {
+  return fetch(provider.endpoint, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
