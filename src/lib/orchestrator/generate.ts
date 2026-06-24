@@ -19,9 +19,36 @@ function isAvailabilityError(msg: string): boolean {
 /** How many times to ask the model before giving up on a structurally valid post. */
 const MAX_GENERATION_ATTEMPTS = 5;
 
-/** Pause helper for backing off between retries. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** HTTP statuses worth retrying — rate limits and transient upstream outages
+ *  (Gemini's free tier returns 503 "UNAVAILABLE" under load). Client errors like
+ *  400/401/403 are deliberately absent: retrying them just fails identically. */
+const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+
+/** Carries the HTTP status of a failed LLM call so the retry loop can tell a
+ *  transient outage (back off and retry) from a fatal client error (give up). */
+class LlmError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'LlmError';
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Worth another try? Only an LlmError is — a retryable HTTP status, or a
+ *  network/bad-response failure (an LlmError with no status). Anything that is
+ *  NOT an LlmError is an unexpected bug (a TypeError, a misconfiguration); fail
+ *  fast on it rather than mask it behind retries and backoff. */
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof LlmError)) return false;
+  return err.status === undefined || RETRYABLE_STATUS.has(err.status);
+}
+
+/** Exponential backoff with jitter: ~1s, 2s, 4s, 8s … capped at 30s. Spreads the
+ *  retries across a demand spike instead of hammering the same overloaded model. */
+function backoffMs(attempt: number): number {
+  const base = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
+  return base + Math.floor(Math.random() * 500);
 }
 
 /**
@@ -150,7 +177,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
   // genuinely unrepairable misses (too-short body, too-few tags, malformed JSON)
-  // and transient Groq errors, feeding the exact reason back so the model can
+  // and transient LLM errors, feeding the exact reason back so the model can
   // correct itself. Only fail loudly after exhausting attempts.
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const userPrompt =
@@ -162,19 +189,21 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
     try {
       content = await callLlm(provider, providerKey, userPrompt);
     } catch (err) {
-      // Rate limit / 5xx / network blip — worth another attempt.
       lastError = err instanceof Error ? err.message : String(err);
-      // On a transient availability error, fail over to the backup provider
-      // (once) and retry immediately against the fresh endpoint.
-      if (!failedOver && FALLBACK_LLM && fallbackKey && isAvailabilityError(lastError)) {
-        failedOver = true;
-        provider = FALLBACK_LLM;
-        providerKey = fallbackKey;
-        console.warn(`generate: primary LLM (${PRIMARY_LLM.model}) unavailable — failing over to ${FALLBACK_LLM.model}`);
-        continue;
+      // A non-retryable client error (400/401/403) or an unexpected bug fails
+      // identically every time — surface it now with an accurate message instead
+      // of burning the remaining attempts and reporting a misleading "after N
+      // attempts". Transient 429/5xx and network blips fall through to a backoff
+      // so the next try lands after the demand spike rather than during it.
+      if (!isTransient(err)) {
+        throw new Error(`LLM generation aborted on a non-retryable error: ${lastError}`);
       }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
-        await sleep(Math.min(30_000, 1000 * 2 ** attempt));
+        const wait = backoffMs(attempt);
+        console.warn(
+          `[generate] attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed: ${lastError.slice(0, 140)} — retrying in ${wait}ms`
+        );
+        await sleep(wait);
       }
       continue;
     }
@@ -197,12 +226,37 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   }
 
   throw new Error(
-    `LLM output failed validation after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
+    `LLM generation failed after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
   );
 }
 
-async function callLlm(provider: LlmProvider, key: string, userPrompt: string): Promise<string> {
-  const res = await fetch(provider.endpoint, {
+async function callLlm(key: string, userPrompt: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchLlm(key, userPrompt);
+  } catch (err) {
+    // Network-level failure (DNS, reset, timeout) — no HTTP status, so transient.
+    throw new LlmError(`LLM request failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new LlmError(`LLM API error ${res.status}: ${text.slice(0, 500)}`, res.status);
+  }
+
+  let json: { choices: Array<{ message: { content: string } }> };
+  try {
+    json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+  } catch (err) {
+    // A malformed body from an otherwise-OK response is an upstream hiccup, not
+    // our bug — keep it transient (no status) so it retries.
+    throw new LlmError(`LLM returned a non-JSON response: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return json.choices?.[0]?.message?.content ?? '';
+}
+
+function fetchLlm(key: string, userPrompt: string): Promise<Response> {
+  return fetch(LLM_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -219,14 +273,6 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
       ],
     }),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
-  }
-
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  return json.choices[0]?.message?.content ?? '';
 }
 
 function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle): GeneratedPost {
