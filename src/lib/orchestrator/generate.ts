@@ -25,10 +25,13 @@ class LlmError extends Error {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** A network failure (no status) or a retryable HTTP status is worth another try. */
+/** Worth another try? Only an LlmError is — a retryable HTTP status, or a
+ *  network/bad-response failure (an LlmError with no status). Anything that is
+ *  NOT an LlmError is an unexpected bug (a TypeError, a misconfiguration); fail
+ *  fast on it rather than mask it behind retries and backoff. */
 function isTransient(err: unknown): boolean {
-  if (err instanceof LlmError && err.status !== undefined) return RETRYABLE_STATUS.has(err.status);
-  return true; // fetch/network error — no response at all
+  if (!(err instanceof LlmError)) return false;
+  return err.status === undefined || RETRYABLE_STATUS.has(err.status);
 }
 
 /** Exponential backoff with jitter: ~1s, 2s, 4s, 8s … capped at 30s. Spreads the
@@ -171,10 +174,14 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
       content = await callLlm(key, userPrompt);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
-      // A 400/401/403 fails identically every attempt — stop now instead of
-      // burning the rest. Transient 429/5xx and network blips get a backoff so
-      // the next try lands after the demand spike rather than during it.
-      if (!isTransient(err)) break;
+      // A non-retryable client error (400/401/403) or an unexpected bug fails
+      // identically every time — surface it now with an accurate message instead
+      // of burning the remaining attempts and reporting a misleading "after N
+      // attempts". Transient 429/5xx and network blips fall through to a backoff
+      // so the next try lands after the demand spike rather than during it.
+      if (!isTransient(err)) {
+        throw new Error(`LLM generation aborted on a non-retryable error: ${lastError}`);
+      }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
         const wait = backoffMs(attempt);
         console.warn(
@@ -208,7 +215,32 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 }
 
 async function callLlm(key: string, userPrompt: string): Promise<string> {
-  const res = await fetch(LLM_URL, {
+  let res: Response;
+  try {
+    res = await fetchLlm(key, userPrompt);
+  } catch (err) {
+    // Network-level failure (DNS, reset, timeout) — no HTTP status, so transient.
+    throw new LlmError(`LLM request failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new LlmError(`LLM API error ${res.status}: ${text.slice(0, 500)}`, res.status);
+  }
+
+  let json: { choices: Array<{ message: { content: string } }> };
+  try {
+    json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+  } catch (err) {
+    // A malformed body from an otherwise-OK response is an upstream hiccup, not
+    // our bug — keep it transient (no status) so it retries.
+    throw new LlmError(`LLM returned a non-JSON response: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return json.choices?.[0]?.message?.content ?? '';
+}
+
+function fetchLlm(key: string, userPrompt: string): Promise<Response> {
+  return fetch(LLM_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -225,14 +257,6 @@ async function callLlm(key: string, userPrompt: string): Promise<string> {
       ],
     }),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new LlmError(`LLM API error ${res.status}: ${text.slice(0, 500)}`, res.status);
-  }
-
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  return json.choices[0]?.message?.content ?? '';
 }
 
 function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle): GeneratedPost {
