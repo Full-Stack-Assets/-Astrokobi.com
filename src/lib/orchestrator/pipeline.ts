@@ -60,7 +60,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineR
     const doneScore = t('score');
     const scored = dedupe(score(allItems));
     const topicLog = opts.topicLog ?? (opts.dryRun ? { topics: [] } : await loadTopicLog());
-    const winner = pickWinner(scored, topicLog);
+    // AstroKobi intentionally DISREGARDS the topic log when picking a winner:
+    // the log had saturated, starving the hourly run of fresh winners ("no new
+    // topic"). Pass an empty log so pickWinner returns the top-scored (still
+    // in-run-deduped) candidate regardless of whether it was covered before.
+    // The real topicLog is still loaded above and updated/recorded below.
+    const winner = pickWinner(scored, { topics: [] });
     doneScore();
 
     if (!winner) {
