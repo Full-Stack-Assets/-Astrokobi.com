@@ -5,16 +5,28 @@ import type { RawItem } from '../orchestrator/types';
 const TRENDS_RSS = 'https://trends.google.com/trending/rss?geo=US';
 
 // The raw feed is general-interest (sports, celebrities, weather…). Keep the
-// blog on its tech/AI/business niche by only surfacing trends whose term or
-// related headlines match one of these. Cheap substring match, lowercased.
-const TECH_KEYWORDS = [
-  'ai', 'artificial intelligence', 'llm', 'gpt', 'openai', 'anthropic', 'claude', 'gemini',
-  'google', 'apple', 'microsoft', 'meta', 'amazon', 'nvidia', 'intel', 'amd', 'chip', 'gpu',
-  'semiconductor', 'software', 'app', 'startup', 'tech', 'iphone', 'android', 'pixel',
-  'crypto', 'bitcoin', 'ethereum', 'robot', 'tesla', 'spacex', 'cyber', 'hack', 'breach',
-  'cloud', 'developer', 'programming', 'open source', 'open-source', 'quantum', 'vr', 'ar',
-  'headset', 'browser', 'operating system', 'data center', 'datacenter', 'agent',
+// blog on its space & astronomy niche by only surfacing trends whose term or
+// related headlines mention one of these. Matched on WORD BOUNDARIES (case-
+// insensitive): a naive substring match let off-niche news through before —
+// e.g. "ai" inside "cap-tai-n" / "ai-des" matched the old tech keyword list.
+const SPACE_TERMS = [
+  'space', 'spaceflight', 'spacecraft', 'spacex', 'starship', 'rocket', 'rockets',
+  'nasa', 'esa', 'isro', 'jaxa', 'astronaut', 'astronauts', 'cosmonaut', 'satellite',
+  'satellites', 'orbit', 'orbital', 'orbiter', 'mars', 'martian', 'moon', 'lunar',
+  'jupiter', 'saturn', 'venus', 'neptune', 'uranus', 'pluto', 'asteroid', 'asteroids',
+  'comet', 'comets', 'meteor', 'meteorite', 'meteor shower', 'eclipse', 'telescope',
+  'telescopes', 'hubble', 'webb', 'jwst', 'galaxy', 'galaxies', 'galactic', 'nebula',
+  'supernova', 'pulsar', 'quasar', 'exoplanet', 'exoplanets', 'cosmology', 'cosmos',
+  'cosmic', 'astronomy', 'astronomer', 'astronomers', 'astronomical', 'astrophysics',
+  'astrobiology', 'gravitational wave', 'gravitational waves', 'dark matter',
+  'dark energy', 'big bang', 'milky way', 'andromeda', 'solar system', 'interstellar',
+  'planetary', 'planet', 'planets', 'artemis', 'voyager', 'perseverance', 'rover',
+  'international space station', 'aurora', 'solar flare', 'sunspot', 'seti',
+  'extraterrestrial', 'kuiper belt', 'oort cloud', 'observatory', 'black hole',
+  'black holes', 'neutron star', 'dwarf planet', 'stargazing', 'celestial', 'constellation',
 ];
+// Single case-insensitive regex; spaces in multi-word terms allow any whitespace.
+const SPACE_RE = new RegExp('\\b(' + SPACE_TERMS.join('|').replace(/ /g, '\\s+') + ')\\b', 'i');
 
 type TrendItemFields = {
   'ht:approx_traffic'?: string;
@@ -71,7 +83,7 @@ export function toRawItems(items: TrendItem[]): RawItem[] {
     ]
       .join(' ')
       .toLowerCase();
-    if (!TECH_KEYWORDS.some((k) => haystack.includes(k))) continue;
+    if (!SPACE_RE.test(haystack)) continue;
 
     // Prefer a related news headline + URL so the research step has something
     // concrete to scrape; fall back to a Google search for the bare term.
