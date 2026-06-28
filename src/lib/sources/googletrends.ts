@@ -80,9 +80,8 @@ export function toRawItems(items: TrendItem[]): RawItem[] {
     const haystack = [
       term,
       ...news.map((n) => `${field(n, 'ht:news_item_title')} ${field(n, 'ht:news_item_source')}`),
-    ]
-      .join(' ')
-      .toLowerCase();
+    ].join(' ');
+    // SPACE_RE is case-insensitive, so no need to lowercase the haystack.
     if (!SPACE_RE.test(haystack)) continue;
 
     // Prefer a related news headline + URL so the research step has something
