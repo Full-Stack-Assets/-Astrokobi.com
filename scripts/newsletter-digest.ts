@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Weekly newsletter digest — collects posts from the last N days and sends them
- * through the configured provider. Run by .github/workflows/newsletter.yml.
+ * Weekly newsletter digest — collects posts from the last N days and creates a
+ * review DRAFT through the configured provider (not auto-sent; review and send
+ * it from the provider dashboard). Run by .github/workflows/newsletter.yml.
  *
  * Usage: npx tsx scripts/newsletter-digest.ts
  */
@@ -33,13 +34,13 @@ async function main() {
   }
 
   const { subject, body } = buildDigest(posts);
-  console.log(`→ Sending digest: "${subject}" (${posts.length} posts)`);
+  console.log(`→ Creating draft digest: "${subject}" (${posts.length} posts)`);
 
   const result = await sendDigest(subject, body);
   if (result.ok) {
-    console.log('✓ Digest sent.');
+    console.log('✓ Draft created in Buttondown — review it and hit Send from the dashboard.');
   } else {
-    console.error('Digest send failed:', result.error);
+    console.error('Digest draft failed:', result.error);
     process.exit(1);
   }
 }
