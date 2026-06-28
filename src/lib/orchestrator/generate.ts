@@ -218,6 +218,14 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
     const result = PostSchema.safeParse(parsed);
     if (result.success) {
+      // A response truncated at the token cap (cut off mid-FAQ) leaves an
+      // unclosed <Question>/<FAQ> that passes the length-only schema but then
+      // crashes `next build` during MDX prerender. Reject and regenerate.
+      const unbalanced = findUnbalancedMdxTag(result.data.body);
+      if (unbalanced) {
+        lastError = `body has an unbalanced MDX tag: ${unbalanced} (likely a truncated response)`;
+        continue;
+      }
       return finalize(result.data, bundle);
     }
     lastError = result.error.issues
@@ -265,7 +273,7 @@ function fetchLlm(provider: LlmProvider, key: string, userPrompt: string): Promi
     body: JSON.stringify({
       model: provider.model,
       temperature: 0.5,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -273,6 +281,20 @@ function fetchLlm(provider: LlmProvider, key: string, userPrompt: string): Promi
       ],
     }),
   });
+}
+
+// The MDX block components must each be balanced (every open tag closed). A
+// truncated LLM response — cut off at the token cap mid-FAQ — leaves an unclosed
+// <Question>/<FAQ> that passes the length-only schema but then crashes
+// `next build` during MDX prerender. Returns the offending tag, or null if balanced.
+const MDX_BLOCK_TAGS = ['Callout', 'ProsCons', 'Pros', 'Cons', 'FAQ', 'Question'] as const;
+export function findUnbalancedMdxTag(body: string): string | null {
+  for (const tag of MDX_BLOCK_TAGS) {
+    const opens = (body.match(new RegExp(`<${tag}(?:\\s|>)`, 'g')) ?? []).length;
+    const closes = (body.match(new RegExp(`</${tag}>`, 'g')) ?? []).length;
+    if (opens !== closes) return `${tag} (${opens} open, ${closes} close)`;
+  }
+  return null;
 }
 
 function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle): GeneratedPost {
