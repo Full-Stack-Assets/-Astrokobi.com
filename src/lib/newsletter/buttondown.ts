@@ -24,7 +24,7 @@ export async function subscribeButtondown(email: string): Promise<NewsletterResu
 }
 
 /**
- * Create the digest as a DRAFT in Buttondown for human review — it is NOT sent
+ * Create an email as a DRAFT in Buttondown for human review — it is NOT sent
  * automatically. Review and send it yourself from the Buttondown dashboard
  * (Emails → the draft → Send). To auto-send instead, change status to
  * 'about_to_send'.

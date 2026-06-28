@@ -38,7 +38,7 @@ async function main() {
 
   const result = await sendDigest(subject, body);
   if (result.ok) {
-    console.log('✓ Draft created in Buttondown — review it and hit Send from the dashboard.');
+    console.log('✓ Draft created — review it and send it from your newsletter provider dashboard.');
   } else {
     console.error('Digest draft failed:', result.error);
     process.exit(1);
