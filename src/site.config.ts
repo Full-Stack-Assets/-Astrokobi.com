@@ -80,6 +80,18 @@ export const siteConfig = {
   // ── Ads ───────────────────────────────────────────────────────
   adsenseClient: 'ca-pub-4655488107179825',
 
+  // ── Affiliate (optional) ──────────────────────────────────────
+  // Powers the <GearBox>/<GearPick> MDX components. `amazonTag` is the Amazon
+  // Associates tracking id (e.g. 'astrokobi-20'); the `NEXT_PUBLIC_AMAZON_AFFILIATE_TAG`
+  // env var overrides it per-deploy. Leave blank to ship the components as plain,
+  // untracked outbound links — nothing breaks, they just don't earn until a tag
+  // is set. Links are always rendered with rel="sponsored nofollow" + the FTC
+  // disclosure, regardless of program, so you can also drop in any retailer's
+  // full affiliate URL via <GearPick href="…">.
+  affiliate: {
+    amazonTag: '',
+  },
+
   // ── Engine: writer LLM (Google Gemini, OpenAI-compatible) ─────
   llm: {
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',

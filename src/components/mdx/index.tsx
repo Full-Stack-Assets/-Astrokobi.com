@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { siteConfig } from '@/site.config';
+import { resolveGearHref } from '@/lib/affiliate';
 
 type CalloutType = 'takeaway' | 'warning' | 'note';
 
@@ -72,6 +74,81 @@ export function Question({ q, children }: { q: string; children: ReactNode }) {
   );
 }
 
+/**
+ * FTC-compliant affiliate disclosure. Rendered automatically inside every
+ * <GearBox>, and also usable on its own. Reads the site name from siteConfig so
+ * the template stays portable.
+ */
+export function AffiliateDisclosure() {
+  return (
+    <p className="text-[11px] leading-relaxed text-muted">
+      {siteConfig.name} may earn a commission on purchases made through the links
+      below, at no extra cost to you. We only recommend gear we'd point a friend
+      to. <span className="whitespace-nowrap">As an Amazon Associate,</span>{' '}
+      {siteConfig.name} earns from qualifying purchases.
+    </p>
+  );
+}
+
+/**
+ * A single product recommendation row. Either pass a bare Amazon `asin`
+ * (decorated with the configured Associates tag) or a full `href` to any
+ * retailer's affiliate URL. Always rendered rel="sponsored nofollow".
+ */
+export function GearPick({
+  name,
+  href,
+  asin,
+  why,
+  price,
+}: {
+  name: string;
+  href?: string;
+  asin?: string;
+  why?: ReactNode;
+  price?: string;
+}) {
+  const url = resolveGearHref({ href, asin });
+  return (
+    <li className="flex flex-col gap-1 border-t border-ink/10 py-3 first:border-t-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <div className="min-w-0">
+        <a
+          href={url}
+          target="_blank"
+          rel="sponsored nofollow noopener noreferrer"
+          className="font-display font-semibold text-accent underline-offset-2 hover:underline"
+        >
+          {name}
+        </a>
+        {why && <span className="ml-2 text-sm text-ink/70">— {why}</span>}
+      </div>
+      {price && (
+        <span className="shrink-0 font-mono text-xs uppercase tracking-widest text-muted">
+          {price}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/**
+ * A bordered "recommended gear" block for the body of a post. Wraps a list of
+ * <GearPick> items with a heading and the affiliate disclosure.
+ */
+export function GearBox({ title = 'Recommended gear', children }: { title?: string; children: ReactNode }) {
+  return (
+    <aside className="my-10 border border-ink/20 bg-ink/[0.02] p-6">
+      <div className="mb-1 font-display text-sm font-bold uppercase tracking-[0.2em] text-accent">
+        {title}
+      </div>
+      <div className="mb-4">
+        <AffiliateDisclosure />
+      </div>
+      <ul className="space-y-0">{children}</ul>
+    </aside>
+  );
+}
+
 export const mdxComponents = {
   Callout,
   ProsCons,
@@ -79,4 +156,7 @@ export const mdxComponents = {
   Cons,
   FAQ,
   Question,
+  GearBox,
+  GearPick,
+  AffiliateDisclosure,
 };
