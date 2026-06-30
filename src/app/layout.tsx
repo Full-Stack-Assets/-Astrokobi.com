@@ -6,8 +6,10 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd } from '@/lib/structured-data';
 import { SubscribeForm } from '@/components/SubscribeForm';
 import { AdSlot } from '@/components/AdSlot';
+import { AffiliateDisclosure } from '@/components/mdx';
 import { ADSENSE_CLIENT, ADSENSE_SLOT_FOOTER } from '@/lib/ads';
 import { siteConfig } from '@/site.config';
+import { shouldDisclose } from '@/lib/affiliate';
 import './globals.css';
 
 /** Short categories (AI, DIY) read better uppercased; longer ones title-cased. */
@@ -129,6 +131,11 @@ function Footer() {
           <Link href="/about" className="underline hover:text-accent">Read how this works</Link> —
           corrections are welcome.
         </p>
+        {shouldDisclose() && (
+          <div className="mt-4 max-w-3xl border-t border-ink/10 pt-4">
+            <AffiliateDisclosure scope="site" />
+          </div>
+        )}
       </div>
     </footer>
   );

@@ -49,6 +49,18 @@ telescopes, aurora-chasing, moon-watching, and "further reading" boxes on
 explainer posts). To roll out more, drop a `<GearBox>` right before the `## FAQ`
 heading in any post.
 
+## Site-wide disclosure
+
+A site-wide affiliate disclosure renders automatically in the **footer** (every
+page) and as an **"Affiliate disclosure" section on the About page**, satisfying
+the Amazon Associates Operating Agreement and FTC requirements. It's controlled by
+`site.config.ts → affiliate.disclose` (default `true`) and shows regardless of
+whether a tracking tag is set yet — so it's in place before program approval.
+Set `disclose: false` only for a site instance that carries no affiliate links.
+
+The same `<AffiliateDisclosure scope="site" />` component is reused; inside a
+`<GearBox>` it renders with `scope="box"` wording automatically.
+
 ## Notes
 
 - These are **optional** components — the hourly generation pipeline does **not**

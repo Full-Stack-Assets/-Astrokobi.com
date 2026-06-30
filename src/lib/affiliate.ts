@@ -25,6 +25,16 @@ export function affiliateEnabled(): boolean {
   return amazonTag().length > 0;
 }
 
+/**
+ * Whether to render the site-wide affiliate disclosure (footer + About page).
+ * Driven by config so it shows for Amazon/FTC compliance regardless of whether
+ * a tracking tag is set yet — a site can carry affiliate links before its
+ * program approval comes through.
+ */
+export function shouldDisclose(): boolean {
+  return siteConfig.affiliate?.disclose ?? true;
+}
+
 /** Append the Associates tag to an Amazon URL (no-op if untagged or already tagged). */
 function tagAmazonUrl(url: string, tag: string): string {
   if (!tag) return url;

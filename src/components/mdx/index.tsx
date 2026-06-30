@@ -75,11 +75,23 @@ export function Question({ q, children }: { q: string; children: ReactNode }) {
 }
 
 /**
- * FTC-compliant affiliate disclosure. Rendered automatically inside every
- * <GearBox>, and also usable on its own. Reads the site name from siteConfig so
- * the template stays portable.
+ * FTC-compliant affiliate disclosure. Reads the site name from siteConfig so the
+ * template stays portable.
+ *  - scope="box"  (default): wording for inside a <GearBox> ("the links below").
+ *  - scope="site": wording for a site-wide placement (footer / About page).
  */
-export function AffiliateDisclosure() {
+export function AffiliateDisclosure({ scope = 'box' }: { scope?: 'box' | 'site' }) {
+  if (scope === 'site') {
+    return (
+      <p className="text-[11px] leading-relaxed text-muted">
+        Some links on {siteConfig.name} are affiliate links. If you buy through
+        them, {siteConfig.name} may earn a commission at no extra cost to you —
+        it helps keep the site running. We only recommend things we&rsquo;d point
+        a friend to. <span className="whitespace-nowrap">As an Amazon Associate,</span>{' '}
+        {siteConfig.name} earns from qualifying purchases.
+      </p>
+    );
+  }
   return (
     <p className="text-[11px] leading-relaxed text-muted">
       {siteConfig.name} may earn a commission on purchases made through the links

@@ -90,6 +90,12 @@ export const siteConfig = {
   // full affiliate URL via <GearPick href="…">.
   affiliate: {
     amazonTag: '',
+    // When true, a site-wide affiliate disclosure renders in the footer and on
+    // the About page (required by the Amazon Associates Operating Agreement and
+    // FTC whenever any affiliate links appear on the site). Leave true for any
+    // instance that uses <GearBox>/<GearPick>; set false only for a site with no
+    // affiliate links at all.
+    disclose: true,
   },
 
   // ── Engine: writer LLM (Google Gemini, OpenAI-compatible) ─────
