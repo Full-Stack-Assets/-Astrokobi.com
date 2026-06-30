@@ -80,6 +80,10 @@ export const siteConfig = {
   // ── Ads ───────────────────────────────────────────────────────
   adsenseClient: 'ca-pub-4655488107179825',
 
+  // ── Affiliate — Amazon Associates tag (e.g. 'astrokobi-20'). Empty hides all
+  //    affiliate gear boxes. Override per-deploy with NEXT_PUBLIC_AMAZON_TAG.
+  amazonAssociatesTag: '',
+
   // ── Engine: writer LLM (Google Gemini, OpenAI-compatible) ─────
   llm: {
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
