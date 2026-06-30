@@ -177,18 +177,18 @@ send, no commitment") to lower the barrier.
 ## Part 4 — 30/60/90 execution checklist
 
 **Days 1–30 (capture + affiliate, $0 spend)**
-- [ ] Ship inline + end-of-article `<SubscribeForm/>` placements.
+- [x] Ship inline + end-of-article `<SubscribeForm/>` placements. *(Done: `<NewsletterCTA>` renders at the end of every article and is registered as an MDX component for inline drops.)*
 - [ ] Produce the "2026 Sky Calendar" lead magnet (PDF) and wire it to Buttondown's welcome email.
-- [ ] Roll the new `<GearBox>` units out across the remaining high-intent posts (set `NEXT_PUBLIC_AMAZON_AFFILIATE_TAG` first).
-- [ ] Add the newsletter CTA to syndication + RSS footers.
+- [x] Roll the new `<GearBox>` units out across high-intent posts (set `NEXT_PUBLIC_AMAZON_AFFILIATE_TAG` first). *(Done: 13 posts wired; widen further as desired.)*
+- [ ] Add the newsletter CTA to syndication footers. *(Skipped for now — Bluesky's 300-char limit makes this risky; RSS/site CTAs cover it.)*
 
 **Days 31–60 (activate + retain)**
 - [ ] Build the 3-email Buttondown welcome sequence.
-- [ ] Add the LLM-generated "From the control room" intro to the digest.
+- [x] Upgrade the digest to a "story of the week" lead + "From the control room" intro. *(Done in `digest.ts`; LLM-generated intro is the next upgrade.)*
 - [ ] Add the segmentation poll; start tagging subscribers.
 
 **Days 61–90 (monetize)**
-- [ ] Stand up the `/sponsor` media-kit page.
+- [x] Stand up the `/sponsor` media-kit page. *(Done: `/sponsor`, linked in the footer, driven by `siteConfig`.)*
 - [ ] Identify the top-clicking affiliate brands; turn the best into sponsor outreach.
 - [ ] Send the first 10 sponsor pitch emails at the intro rate once ≥2k engaged subs.
 

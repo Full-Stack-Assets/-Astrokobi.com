@@ -119,8 +119,15 @@ function Footer() {
             <span className="font-display text-base font-semibold text-ink">{siteConfig.name}</span>
             {' '}— {siteConfig.footerNote}
           </div>
-          <div className="text-xs uppercase tracking-widest">
-            © {new Date().getFullYear()} — No humans were harmed in the making of this blog.
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <nav className="flex gap-4 text-xs uppercase tracking-widest">
+              <Link href="/about" className="hover:text-accent">About</Link>
+              <Link href="/sponsor" className="hover:text-accent">Sponsor</Link>
+              <Link href="/feed.xml" className="hover:text-accent">RSS</Link>
+            </nav>
+            <div className="text-xs uppercase tracking-widest">
+              © {new Date().getFullYear()} — No humans were harmed in the making of this blog.
+            </div>
           </div>
         </div>
         <p className="mt-6 max-w-3xl text-xs leading-relaxed text-muted/80">

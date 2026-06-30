@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { siteConfig } from '@/site.config';
 import { resolveGearHref } from '@/lib/affiliate';
+import { NewsletterCTA } from '@/components/NewsletterCTA';
 
 type CalloutType = 'takeaway' | 'warning' | 'note';
 
@@ -171,4 +172,5 @@ export const mdxComponents = {
   GearBox,
   GearPick,
   AffiliateDisclosure,
+  NewsletterCTA,
 };
