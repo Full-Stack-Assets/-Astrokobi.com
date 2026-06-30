@@ -3,8 +3,9 @@ import { siteConfig } from '@/site.config';
 // Amazon Associates tag. This is a PUBLIC value (it rides in the link URL), so
 // set it via NEXT_PUBLIC_AMAZON_TAG per-deploy, or `amazonAssociatesTag` in
 // site.config.ts. Empty string => affiliate boxes are hidden everywhere.
-export const AMAZON_TAG =
-  process.env.NEXT_PUBLIC_AMAZON_TAG?.trim() || siteConfig.amazonAssociatesTag || '';
+export const AMAZON_TAG = (
+  process.env.NEXT_PUBLIC_AMAZON_TAG || siteConfig.amazonAssociatesTag || ''
+).trim();
 
 export function affiliateEnabled(): boolean {
   return AMAZON_TAG.length > 0;
