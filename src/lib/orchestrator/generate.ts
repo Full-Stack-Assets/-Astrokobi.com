@@ -19,9 +19,36 @@ function isAvailabilityError(msg: string): boolean {
 /** How many times to ask the model before giving up on a structurally valid post. */
 const MAX_GENERATION_ATTEMPTS = 5;
 
-/** Pause helper for backing off between retries. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** HTTP statuses worth retrying — rate limits and transient upstream outages
+ *  (Gemini's free tier returns 503 "UNAVAILABLE" under load). Client errors like
+ *  400/401/403 are deliberately absent: retrying them just fails identically. */
+const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+
+/** Carries the HTTP status of a failed LLM call so the retry loop can tell a
+ *  transient outage (back off and retry) from a fatal client error (give up). */
+class LlmError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'LlmError';
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Worth another try? Only an LlmError is — a retryable HTTP status, or a
+ *  network/bad-response failure (an LlmError with no status). Anything that is
+ *  NOT an LlmError is an unexpected bug (a TypeError, a misconfiguration); fail
+ *  fast on it rather than mask it behind retries and backoff. */
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof LlmError)) return false;
+  return err.status === undefined || RETRYABLE_STATUS.has(err.status);
+}
+
+/** Exponential backoff with jitter: ~1s, 2s, 4s, 8s … capped at 30s. Spreads the
+ *  retries across a demand spike instead of hammering the same overloaded model. */
+function backoffMs(attempt: number): number {
+  const base = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
+  return base + Math.floor(Math.random() * 500);
 }
 
 /**
@@ -150,7 +177,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
   // genuinely unrepairable misses (too-short body, too-few tags, malformed JSON)
-  // and transient Groq errors, feeding the exact reason back so the model can
+  // and transient LLM errors, feeding the exact reason back so the model can
   // correct itself. Only fail loudly after exhausting attempts.
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const userPrompt =
@@ -162,7 +189,6 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
     try {
       content = await callLlm(provider, providerKey, userPrompt);
     } catch (err) {
-      // Rate limit / 5xx / network blip — worth another attempt.
       lastError = err instanceof Error ? err.message : String(err);
       // On a transient availability error, fail over to the backup provider
       // (once) and retry immediately against the fresh endpoint.
@@ -174,7 +200,11 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
         continue;
       }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
-        await sleep(Math.min(30_000, 1000 * 2 ** attempt));
+        const wait = backoffMs(attempt);
+        console.warn(
+          `[generate] attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed: ${lastError.slice(0, 140)} — retrying in ${wait}ms`
+        );
+        await sleep(wait);
       }
       continue;
     }
@@ -189,6 +219,14 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
     const result = PostSchema.safeParse(parsed);
     if (result.success) {
+      // A response truncated at the token cap (cut off mid-FAQ) leaves an
+      // unclosed <Question>/<FAQ> that passes the length-only schema but then
+      // crashes `next build` during MDX prerender. Reject and regenerate.
+      const unbalanced = findUnbalancedMdxTag(result.data.body);
+      if (unbalanced) {
+        lastError = `body has an unbalanced MDX tag: ${unbalanced} (likely a truncated response)`;
+        continue;
+      }
       return finalize(result.data, bundle);
     }
     lastError = result.error.issues
@@ -197,7 +235,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   }
 
   throw new Error(
-    `LLM output failed validation after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
+    `LLM generation failed after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
   );
 }
 
@@ -211,7 +249,7 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
     body: JSON.stringify({
       model: provider.model,
       temperature: 0.5,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -219,14 +257,20 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
       ],
     }),
   });
+}
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
+// The MDX block components must each be balanced (every open tag closed). A
+// truncated LLM response — cut off at the token cap mid-FAQ — leaves an unclosed
+// <Question>/<FAQ> that passes the length-only schema but then crashes
+// `next build` during MDX prerender. Returns the offending tag, or null if balanced.
+const MDX_BLOCK_TAGS = ['Callout', 'ProsCons', 'Pros', 'Cons', 'FAQ', 'Question'] as const;
+export function findUnbalancedMdxTag(body: string): string | null {
+  for (const tag of MDX_BLOCK_TAGS) {
+    const opens = (body.match(new RegExp(`<${tag}(?:\\s|>)`, 'g')) ?? []).length;
+    const closes = (body.match(new RegExp(`</${tag}>`, 'g')) ?? []).length;
+    if (opens !== closes) return `${tag} (${opens} open, ${closes} close)`;
   }
-
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  return json.choices[0]?.message?.content ?? '';
+  return null;
 }
 
 function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle): GeneratedPost {
