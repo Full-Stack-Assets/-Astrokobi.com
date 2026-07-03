@@ -6,8 +6,10 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd } from '@/lib/structured-data';
 import { SubscribeForm } from '@/components/SubscribeForm';
 import { AdSlot } from '@/components/AdSlot';
+import { AffiliateDisclosure } from '@/components/mdx';
 import { ADSENSE_CLIENT, ADSENSE_SLOT_FOOTER } from '@/lib/ads';
 import { siteConfig } from '@/site.config';
+import { shouldDisclose } from '@/lib/affiliate';
 import './globals.css';
 
 /** Short categories (AI, DIY) read better uppercased; longer ones title-cased. */
@@ -117,8 +119,15 @@ function Footer() {
             <span className="font-display text-base font-semibold text-ink">{siteConfig.name}</span>
             {' '}— {siteConfig.footerNote}
           </div>
-          <div className="text-xs uppercase tracking-widest">
-            © {new Date().getFullYear()} — No humans were harmed in the making of this blog.
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <nav className="flex gap-4 text-xs uppercase tracking-widest">
+              <Link href="/about" className="hover:text-accent">About</Link>
+              <Link href="/sponsor" className="hover:text-accent">Sponsor</Link>
+              <Link href="/feed.xml" className="hover:text-accent">RSS</Link>
+            </nav>
+            <div className="text-xs uppercase tracking-widest">
+              © {new Date().getFullYear()} — No humans were harmed in the making of this blog.
+            </div>
           </div>
         </div>
         <p className="mt-6 max-w-3xl text-xs leading-relaxed text-muted/80">
@@ -129,6 +138,11 @@ function Footer() {
           <Link href="/about" className="underline hover:text-accent">Read how this works</Link> —
           corrections are welcome.
         </p>
+        {shouldDisclose() && (
+          <div className="mt-4 max-w-3xl border-t border-ink/10 pt-4">
+            <AffiliateDisclosure scope="site" />
+          </div>
+        )}
       </div>
     </footer>
   );

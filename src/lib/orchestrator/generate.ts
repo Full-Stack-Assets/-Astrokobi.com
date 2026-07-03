@@ -2,9 +2,19 @@ import { z } from 'zod';
 import type { ResearchBundle, GeneratedPost } from './types';
 import { siteConfig } from '@/site.config';
 
-const LLM_URL = siteConfig.llm.endpoint;
-const LLM_MODEL = siteConfig.llm.model;
-const LLM_KEY_ENV = siteConfig.llm.apiKeyEnv;
+type LlmProvider = { endpoint: string; model: string; apiKeyEnv: string };
+
+// Primary writer model, plus an optional backup provider used when the primary
+// keeps returning transient availability errors (5xx / rate limit). The backup
+// is configured as `llmFallback` in site.config.ts; skipped when absent or when
+// its API key isn't set.
+const PRIMARY_LLM: LlmProvider = siteConfig.llm;
+const FALLBACK_LLM: LlmProvider | undefined = (siteConfig as { llmFallback?: LlmProvider }).llmFallback;
+
+/** A transient provider error worth failing over to the backup LLM for. */
+function isAvailabilityError(msg: string): boolean {
+  return /API error (?:429|5\d\d)\b/.test(msg) || /overloaded|unavailable|high demand/i.test(msg);
+}
 
 /** How many times to ask the model before giving up on a structurally valid post. */
 const MAX_GENERATION_ATTEMPTS = 5;
@@ -126,15 +136,21 @@ HARD RULES:
 - Do not wrap the JSON in markdown code fences.`;
 
 export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
-  const key = process.env[LLM_KEY_ENV];
-  if (!key) throw new Error(`${LLM_KEY_ENV} not set`);
+  const primaryKey = process.env[PRIMARY_LLM.apiKeyEnv];
+  if (!primaryKey) throw new Error(`${PRIMARY_LLM.apiKeyEnv} not set`);
+  const fallbackKey = FALLBACK_LLM ? (process.env[FALLBACK_LLM.apiKeyEnv] ?? '').trim() : '';
+
+  // Start on the primary provider; fail over to the backup on transient errors.
+  let provider = PRIMARY_LLM;
+  let providerKey = primaryKey;
+  let failedOver = false;
 
   const baseUserPrompt = buildUserPrompt(bundle);
   let lastError = '';
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
   // genuinely unrepairable misses (too-short body, too-few tags, malformed JSON)
-  // and transient Groq errors, feeding the exact reason back so the model can
+  // and transient LLM errors, feeding the exact reason back so the model can
   // correct itself. Only fail loudly after exhausting attempts.
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const userPrompt =
@@ -144,9 +160,8 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
     let content: string;
     try {
-      content = await callLlm(key, userPrompt);
+      content = await callLlm(provider, providerKey, userPrompt);
     } catch (err) {
-      // Rate limit / 5xx / network blip — worth another attempt.
       lastError = err instanceof Error ? err.message : String(err);
       if (attempt < MAX_GENERATION_ATTEMPTS) {
         await sleep(Math.min(30_000, 1000 * 2 ** attempt));
@@ -164,6 +179,14 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
 
     const result = PostSchema.safeParse(parsed);
     if (result.success) {
+      // A response truncated at the token cap (cut off mid-FAQ) leaves an
+      // unclosed <Question>/<FAQ> that passes the length-only schema but then
+      // crashes `next build` during MDX prerender. Reject and regenerate.
+      const unbalanced = findUnbalancedMdxTag(result.data.body);
+      if (unbalanced) {
+        lastError = `body has an unbalanced MDX tag: ${unbalanced} (likely a truncated response)`;
+        continue;
+      }
       return finalize(result.data, bundle);
     }
     lastError = result.error.issues
@@ -176,17 +199,17 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   );
 }
 
-async function callLlm(key: string, userPrompt: string): Promise<string> {
-  const res = await fetch(LLM_URL, {
+async function callLlm(provider: LlmProvider, key: string, userPrompt: string): Promise<string> {
+  const res = await fetch(provider.endpoint, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${key}`,
     },
     body: JSON.stringify({
-      model: LLM_MODEL,
+      model: provider.model,
       temperature: 0.5,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -194,14 +217,20 @@ async function callLlm(key: string, userPrompt: string): Promise<string> {
       ],
     }),
   });
+}
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
+// The MDX block components must each be balanced (every open tag closed). A
+// truncated LLM response — cut off at the token cap mid-FAQ — leaves an unclosed
+// <Question>/<FAQ> that passes the length-only schema but then crashes
+// `next build` during MDX prerender. Returns the offending tag, or null if balanced.
+const MDX_BLOCK_TAGS = ['Callout', 'ProsCons', 'Pros', 'Cons', 'FAQ', 'Question'] as const;
+export function findUnbalancedMdxTag(body: string): string | null {
+  for (const tag of MDX_BLOCK_TAGS) {
+    const opens = (body.match(new RegExp(`<${tag}(?:\\s|>)`, 'g')) ?? []).length;
+    const closes = (body.match(new RegExp(`</${tag}>`, 'g')) ?? []).length;
+    if (opens !== closes) return `${tag} (${opens} open, ${closes} close)`;
   }
-
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  return json.choices[0]?.message?.content ?? '';
+  return null;
 }
 
 function finalize(validated: z.infer<typeof PostSchema>, bundle: ResearchBundle): GeneratedPost {

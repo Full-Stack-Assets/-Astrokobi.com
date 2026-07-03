@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { siteConfig } from '@/site.config';
+import { AffiliateDisclosure } from '@/components/mdx';
+import { shouldDisclose } from '@/lib/affiliate';
 
 export const metadata = { title: 'About' };
 
@@ -40,6 +42,20 @@ export default function AboutPage() {
           Next.js, TinaCMS, a free-tier LLM, and a lot of free public APIs. Total running
           cost: about $0/month.
         </p>
+
+        {shouldDisclose() && (
+          <>
+            <h2>Affiliate disclosure</h2>
+            <p>
+              Some articles recommend gear and books relevant to the topic. Those are
+              affiliate links: if you buy through one, {siteConfig.name} may earn a small
+              commission at no extra cost to you, which helps keep the site running. We only
+              link to things we&rsquo;d genuinely recommend, and recommendations are never
+              paid placements. As an Amazon Associate, {siteConfig.name} earns from
+              qualifying purchases.
+            </p>
+          </>
+        )}
 
         <p className="mt-8">
           <Link href="/" className="text-accent underline">← Back to the front page</Link>
