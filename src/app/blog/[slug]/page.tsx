@@ -6,7 +6,7 @@ import { loadPost, listPosts, relatedPosts } from '@/lib/posts';
 import { mdxComponents } from '@/components/mdx';
 import { articleJsonLd, faqJsonLd, breadcrumbJsonLd, SITE_URL, SITE_NAME } from '@/lib/structured-data';
 import { AdSlot } from '@/components/AdSlot';
-import { NewsletterCTA } from '@/components/NewsletterCTA';
+import { GearBox } from '@/components/GearBox';
 import { ADSENSE_SLOT_IN_ARTICLE } from '@/lib/ads';
 
 export const revalidate = 300;
@@ -138,8 +138,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         className="my-12 block text-center"
       />
 
-      {/* End-of-article newsletter CTA */}
-      <NewsletterCTA />
+      {/* Affiliate gear (renders only when an Amazon Associates tag is configured) */}
+      <GearBox tags={frontmatter.tags} category={frontmatter.category} title={frontmatter.title} />
 
       {/* Sources */}
       {frontmatter.sources?.length > 0 && (

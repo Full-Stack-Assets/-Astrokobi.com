@@ -1,66 +1,70 @@
-// Affiliate-link helpers for the <GearBox>/<GearPick> MDX components.
-//
-// Design goals:
-//  - Retailer-agnostic: a <GearPick> can carry any full affiliate URL.
-//  - Amazon convenience: pass a bare ASIN and we build the product URL and
-//    append the configured Associates tag.
-//  - Safe to ship untagged: with no tag configured, links render as plain,
-//    untracked outbound links (still rel="sponsored nofollow") — nothing breaks
-//    and nothing silently mis-attributes.
-//
-// The tag resolves from `NEXT_PUBLIC_AMAZON_AFFILIATE_TAG` (per-deploy override)
-// then `siteConfig.affiliate.amazonTag`. Empty-string env vars (unset CI
-// secrets arrive as "") are treated as absent, per the repo convention.
 import { siteConfig } from '@/site.config';
 
-/** The Amazon Associates tracking id, or '' when none is configured. */
-export function amazonTag(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG;
-  if (fromEnv && fromEnv.trim()) return fromEnv.trim();
-  return siteConfig.affiliate?.amazonTag?.trim() || '';
-}
+// Amazon Associates tag. This is a PUBLIC value (it rides in the link URL), so
+// set it via NEXT_PUBLIC_AMAZON_TAG per-deploy, or `amazonAssociatesTag` in
+// site.config.ts. Empty string => affiliate boxes are hidden everywhere.
+export const AMAZON_TAG = (
+  process.env.NEXT_PUBLIC_AMAZON_TAG || siteConfig.amazonAssociatesTag || ''
+).trim();
 
-/** True when any affiliate tag is configured (gates the disclosure copy). */
 export function affiliateEnabled(): boolean {
-  return amazonTag().length > 0;
+  return AMAZON_TAG.length > 0;
+}
+
+export interface Gear {
+  id: string;
+  name: string;
+  blurb: string;
+  /** Amazon search query — see amazonUrl(). */
+  query: string;
+  /** Lowercase terms matched against a post's tags / category / title. */
+  keywords: string[];
+}
+
+// Evergreen space & astronomy gear. We deliberately link to *tagged Amazon
+// search results* rather than hardcoded ASINs, so picks never go out of stock
+// or stale; swap a `query` for a specific product URL later if you want to
+// feature exact items. Edit freely — this is the whole catalog.
+export const GEAR: Gear[] = [
+  { id: 'beginner-telescope', name: 'Beginner telescope', blurb: 'A no-fuss first scope for the Moon, planets, and bright deep-sky objects.', query: 'beginner telescope astronomy', keywords: ['telescope', 'stargazing', 'beginner', 'moon', 'planet', 'observing', 'amateur'] },
+  { id: 'dobsonian', name: 'Dobsonian telescope', blurb: 'The most aperture per dollar — the classic deep-sky workhorse.', query: 'dobsonian telescope', keywords: ['telescope', 'deep sky', 'galaxy', 'galaxies', 'nebula', 'dobsonian', 'aperture'] },
+  { id: 'astro-binoculars', name: 'Astronomy binoculars (10x50)', blurb: 'The most underrated first instrument — wide views of star fields, comets, and the Milky Way.', query: '10x50 astronomy binoculars', keywords: ['binoculars', 'stargazing', 'beginner', 'comet', 'meteor', 'milky way', 'constellation'] },
+  { id: 'star-atlas', name: 'Star atlas & planisphere', blurb: 'Learn the sky and find your way around the constellations.', query: 'star atlas planisphere', keywords: ['constellation', 'stargazing', 'star chart', 'night sky', 'beginner', 'galileo', 'kepler'] },
+  { id: 'star-tracker', name: 'Star tracker mount', blurb: 'For long-exposure astrophotography without star trails.', query: 'star tracker astrophotography mount', keywords: ['astrophotography', 'camera', 'long exposure', 'milky way', 'deep sky', 'tracker', 'photography'] },
+  { id: 'red-flashlight', name: 'Red headlamp', blurb: 'Preserves your night vision at the eyepiece or under a dark sky.', query: 'red astronomy headlamp', keywords: ['stargazing', 'dark sky', 'observing', 'light pollution', 'beginner', 'aurora'] },
+  { id: 'smart-telescope', name: 'Smart telescope', blurb: 'App-driven scopes that locate and stack targets automatically.', query: 'smart telescope', keywords: ['telescope', 'astrophotography', 'beginner', 'technology', 'smart', 'future'] },
+  { id: 'sagan-cosmos', name: '“Cosmos” by Carl Sagan', blurb: 'The book that made a generation look up.', query: 'Cosmos Carl Sagan book', keywords: ['cosmology', 'cosmos', 'history', 'universe', 'explainer', 'big bang', 'science'] },
+];
+
+// Shown on posts that don't match a specific keyword, so every article still
+// surfaces something useful to a beginner.
+const DEFAULT_PICK_IDS = ['astro-binoculars', 'beginner-telescope', 'star-atlas'];
+
+/** Build a tagged Amazon search URL for a query. */
+export function amazonUrl(query: string): string {
+  const u = new URL('https://www.amazon.com/s');
+  u.searchParams.set('k', query);
+  if (AMAZON_TAG) u.searchParams.set('tag', AMAZON_TAG);
+  return u.toString();
 }
 
 /**
- * Whether to render the site-wide affiliate disclosure (footer + About page).
- * Driven by config so it shows for Amazon/FTC compliance regardless of whether
- * a tracking tag is set yet — a site can carry affiliate links before its
- * program approval comes through.
+ * Pick up to `limit` gear items relevant to a post by matching its tags,
+ * category, and title against each item's keywords. Falls back to beginner
+ * staples so every astronomy post still gets useful, on-topic picks.
  */
-export function shouldDisclose(): boolean {
-  return siteConfig.affiliate?.disclose ?? true;
-}
+export function pickGearForPost(
+  opts: { tags?: string[]; category?: string; title?: string },
+  limit = 3
+): Gear[] {
+  const hay = [...(opts.tags ?? []), opts.category ?? '', opts.title ?? '']
+    .join(' ')
+    .toLowerCase();
 
-/** Append the Associates tag to an Amazon URL (no-op if untagged or already tagged). */
-function tagAmazonUrl(url: string, tag: string): string {
-  if (!tag) return url;
-  try {
-    const u = new URL(url);
-    if (!/(^|\.)amazon\./i.test(u.hostname)) return url; // only decorate Amazon
-    if (u.searchParams.has('tag')) return url; // respect an explicit tag
-    u.searchParams.set('tag', tag);
-    return u.toString();
-  } catch {
-    return url;
-  }
-}
-
-/**
- * Resolve the final href for a <GearPick>.
- *  - `asin` given  → https://www.amazon.com/dp/<ASIN>?tag=<tag>
- *  - `href` given  → used as-is, with the Amazon tag appended if it's an
- *                    Amazon link and no tag is already present.
- */
-export function resolveGearHref({ href, asin }: { href?: string; asin?: string }): string {
-  const tag = amazonTag();
-  if (asin && asin.trim()) {
-    const base = `https://www.amazon.com/dp/${encodeURIComponent(asin.trim())}`;
-    return tag ? `${base}?tag=${encodeURIComponent(tag)}` : base;
-  }
-  if (href && href.trim()) return tagAmazonUrl(href.trim(), tag);
-  return '#';
+  const matched = GEAR.filter((g) => g.keywords.some((k) => hay.includes(k)));
+  const chosen =
+    matched.length > 0
+      ? matched
+      : (DEFAULT_PICK_IDS.map((id) => GEAR.find((g) => g.id === id)).filter(Boolean) as Gear[]);
+  return chosen.slice(0, limit);
 }
