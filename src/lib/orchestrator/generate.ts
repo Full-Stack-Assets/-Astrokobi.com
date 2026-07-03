@@ -19,36 +19,9 @@ function isAvailabilityError(msg: string): boolean {
 /** How many times to ask the model before giving up on a structurally valid post. */
 const MAX_GENERATION_ATTEMPTS = 5;
 
-/** HTTP statuses worth retrying — rate limits and transient upstream outages
- *  (Gemini's free tier returns 503 "UNAVAILABLE" under load). Client errors like
- *  400/401/403 are deliberately absent: retrying them just fails identically. */
-const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
-
-/** Carries the HTTP status of a failed LLM call so the retry loop can tell a
- *  transient outage (back off and retry) from a fatal client error (give up). */
-class LlmError extends Error {
-  constructor(message: string, readonly status?: number) {
-    super(message);
-    this.name = 'LlmError';
-  }
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Worth another try? Only an LlmError is — a retryable HTTP status, or a
- *  network/bad-response failure (an LlmError with no status). Anything that is
- *  NOT an LlmError is an unexpected bug (a TypeError, a misconfiguration); fail
- *  fast on it rather than mask it behind retries and backoff. */
-function isTransient(err: unknown): boolean {
-  if (!(err instanceof LlmError)) return false;
-  return err.status === undefined || RETRYABLE_STATUS.has(err.status);
-}
-
-/** Exponential backoff with jitter: ~1s, 2s, 4s, 8s … capped at 30s. Spreads the
- *  retries across a demand spike instead of hammering the same overloaded model. */
-function backoffMs(attempt: number): number {
-  const base = Math.min(30_000, 1_000 * 2 ** (attempt - 1));
-  return base + Math.floor(Math.random() * 500);
+/** Pause helper for backing off between retries. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -190,21 +163,8 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
       content = await callLlm(provider, providerKey, userPrompt);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
-      // On a transient availability error, fail over to the backup provider
-      // (once) and retry immediately against the fresh endpoint.
-      if (!failedOver && FALLBACK_LLM && fallbackKey && isAvailabilityError(lastError)) {
-        failedOver = true;
-        provider = FALLBACK_LLM;
-        providerKey = fallbackKey;
-        console.warn(`generate: primary LLM (${PRIMARY_LLM.model}) unavailable — failing over to ${FALLBACK_LLM.model}`);
-        continue;
-      }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
-        const wait = backoffMs(attempt);
-        console.warn(
-          `[generate] attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed: ${lastError.slice(0, 140)} — retrying in ${wait}ms`
-        );
-        await sleep(wait);
+        await sleep(Math.min(30_000, 1000 * 2 ** attempt));
       }
       continue;
     }
@@ -235,7 +195,7 @@ export async function generate(bundle: ResearchBundle): Promise<GeneratedPost> {
   }
 
   throw new Error(
-    `LLM generation failed after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
+    `LLM output failed validation after ${MAX_GENERATION_ATTEMPTS} attempts: ${lastError}`
   );
 }
 
