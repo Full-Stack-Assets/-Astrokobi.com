@@ -29,7 +29,11 @@ export function resolveGearHref({ href, asin }: { href?: string; asin?: string }
     return u.toString();
   }
   const link = href?.trim();
-  if (!link) return '#';
+  if (!link) {
+    // GearPick requires one of asin/href — fail fast so a bad <GearPick> is
+    // caught at render/build instead of shipping a broken '#' link.
+    throw new Error('resolveGearHref: <GearPick> requires an `asin` or an `href`');
+  }
   try {
     const u = new URL(link);
     if (AMAZON_TAG && /(^|\.)amazon\./i.test(u.hostname) && !u.searchParams.has('tag')) {

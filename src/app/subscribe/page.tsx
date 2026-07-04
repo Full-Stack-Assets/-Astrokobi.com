@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SubscribeForm } from '@/components/SubscribeForm';
-import { listPosts } from '@/lib/posts';
+import { listSlugs } from '@/lib/posts';
 import { siteConfig } from '@/site.config';
 
 export const revalidate = 3600;
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SubscribePage() {
-  const count = (await listPosts()).length;
+  const count = (await listSlugs()).length;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">

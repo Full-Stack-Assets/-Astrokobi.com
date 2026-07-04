@@ -223,8 +223,14 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
     throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
   }
 
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  return json.choices?.[0]?.message?.content ?? '';
+  const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = json.choices?.[0]?.message?.content;
+  if (!content) {
+    // An OK response with no content is an upstream problem — surface it so the
+    // retry loop reports it accurately instead of "response was not valid JSON".
+    throw new Error('LLM returned an empty or malformed response (no message content)');
+  }
+  return content;
 }
 
 // The MDX block components must each be balanced (every open tag closed). A
