@@ -217,6 +217,14 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
       ],
     }),
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`LLM API error ${res.status}: ${text.slice(0, 500)}`);
+  }
+
+  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+  return json.choices?.[0]?.message?.content ?? '';
 }
 
 // The MDX block components must each be balanced (every open tag closed). A

@@ -11,6 +11,37 @@ export function affiliateEnabled(): boolean {
   return AMAZON_TAG.length > 0;
 }
 
+/** Show an affiliate disclosure whenever affiliate links are actually active. */
+export function shouldDisclose(): boolean {
+  return affiliateEnabled();
+}
+
+/**
+ * Resolve the destination for an inline <GearPick>: prefer an explicit Amazon
+ * ASIN (built into a tagged product link), otherwise fall back to `href` — a
+ * bare amazon.com link gets the Associates tag appended; other links pass through.
+ */
+export function resolveGearHref({ href, asin }: { href?: string; asin?: string }): string {
+  const id = asin?.trim();
+  if (id) {
+    const u = new URL(`https://www.amazon.com/dp/${encodeURIComponent(id)}`);
+    if (AMAZON_TAG) u.searchParams.set('tag', AMAZON_TAG);
+    return u.toString();
+  }
+  const link = href?.trim();
+  if (!link) return '#';
+  try {
+    const u = new URL(link);
+    if (AMAZON_TAG && /(^|\.)amazon\./i.test(u.hostname) && !u.searchParams.has('tag')) {
+      u.searchParams.set('tag', AMAZON_TAG);
+      return u.toString();
+    }
+  } catch {
+    // Relative or non-URL href — return as-is.
+  }
+  return link;
+}
+
 export interface Gear {
   id: string;
   name: string;
