@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { listPosts } from '@/lib/posts';
+import { AdSlot } from '@/components/AdSlot';
+import { HeroImage } from '@/components/HeroImage';
+import { ADSENSE_SLOT_LISTING } from '@/lib/ads';
 
 export const revalidate = 300; // re-check content every 5 minutes
 
@@ -16,6 +19,8 @@ export default async function HomePage() {
       ) : (
         <>
           {lead && <LeadStory post={lead} />}
+          {/* Listing ad — renders only when AdSense + a listing slot are configured */}
+          <AdSlot slot={ADSENSE_SLOT_LISTING} format="auto" className="mt-16 block" />
           {rest.length > 0 && (
             <div className="mt-20">
               <SectionRule label="More dispatches" />
@@ -67,12 +72,13 @@ function LeadStory({ post }: { post: Awaited<ReturnType<typeof listPosts>>[numbe
     <article className="grid gap-8 sm:grid-cols-5">
       {frontmatter.hero?.url && (
         <div className="sm:col-span-3 aspect-[4/3] overflow-hidden bg-ink/5">
-          <Link href={`/blog/${slug}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <Link href={`/blog/${slug}`} className="relative block h-full w-full">
+            <HeroImage
               src={frontmatter.hero.url}
               alt={frontmatter.hero.alt}
-              className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
+              priority
+              sizes="(min-width: 640px) 60vw, 100vw"
+              className="transition-transform duration-700 hover:scale-[1.03]"
             />
           </Link>
         </div>
@@ -101,12 +107,12 @@ function PostCard({ post }: { post: Awaited<ReturnType<typeof listPosts>>[number
   return (
     <article className="group flex flex-col">
       {frontmatter.hero?.url && (
-        <Link href={`/blog/${slug}`} className="mb-4 block aspect-[16/10] overflow-hidden bg-ink/5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        <Link href={`/blog/${slug}`} className="relative mb-4 block aspect-[16/10] overflow-hidden bg-ink/5">
+          <HeroImage
             src={frontmatter.hero.url}
             alt={frontmatter.hero.alt}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
       )}
