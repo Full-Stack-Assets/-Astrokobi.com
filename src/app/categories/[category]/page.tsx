@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { listPosts } from '@/lib/posts';
+import { SITE_URL, SITE_NAME } from '@/lib/structured-data';
+import { siteConfig } from '@/site.config';
+import { GearBox } from '@/components/GearBox';
+import { NewsletterCTA } from '@/components/NewsletterCTA';
 
 export const revalidate = 300;
 
@@ -10,10 +15,34 @@ export async function generateStaticParams() {
   return cats.map((category) => ({ category }));
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}): Promise<Metadata> {
+  const { category } = await params;
+  const title = `${category[0].toUpperCase()}${category.slice(1)}`;
+  const description = `The latest ${category} coverage from ${SITE_NAME} — ${siteConfig.description}`;
+  const url = `${SITE_URL}/categories/${category}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: 'website', url, title, description, siteName: SITE_NAME },
+    twitter: { card: 'summary', title, description },
+  };
+}
+
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
-  const posts = (await listPosts()).filter((p) => p.frontmatter.category === category);
+  const all = await listPosts();
+  const posts = all.filter((p) => p.frontmatter.category === category);
   if (posts.length === 0) notFound();
+
+  // Cross-link the other populated categories so no listing page is a dead end.
+  const otherCats = Array.from(new Set(all.map((p) => p.frontmatter.category))).filter(
+    (c) => c !== category
+  );
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">
@@ -38,6 +67,30 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
           </li>
         ))}
       </ul>
+
+      {/* Affiliate gear matched to this category (hidden until a tag is configured) */}
+      <GearBox category={category} title={category} />
+
+      <NewsletterCTA />
+
+      {otherCats.length > 0 && (
+        <nav className="mt-12 border-t border-ink/20 pt-8">
+          <div className="mb-4 font-display text-sm font-bold uppercase tracking-[0.3em] text-muted">
+            More categories
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {otherCats.map((c) => (
+              <Link
+                key={c}
+                href={`/categories/${c}`}
+                className="border border-ink/30 px-3 py-1 text-xs uppercase tracking-widest text-ink/70 hover:border-accent hover:text-accent transition-colors"
+              >
+                {c}
+              </Link>
+            ))}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
