@@ -18,6 +18,9 @@ concurrency:
   group: reimage-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   reimage:
     runs-on: ubuntu-latest
