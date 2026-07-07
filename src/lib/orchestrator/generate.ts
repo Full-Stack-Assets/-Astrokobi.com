@@ -163,6 +163,10 @@ export async function generate(
   const schema = opts.minBodyChars
     ? PostSchema.extend({ body: z.string().min(opts.minBodyChars) })
     : PostSchema;
+  // Long-form output needs more headroom: on thinking models (Gemini 2.5) the
+  // OpenAI-compat max_tokens covers reasoning tokens too, so a ~2200-word JSON
+  // payload gets truncated mid-object at the standard cap ("not valid JSON").
+  const maxTokens = opts.targetWords || opts.minBodyChars ? 16384 : 8192;
   let lastError = '';
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
@@ -177,7 +181,7 @@ export async function generate(
 
     let content: string;
     try {
-      content = await callLlm(provider, providerKey, userPrompt);
+      content = await callLlm(provider, providerKey, userPrompt, maxTokens);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
       if (attempt < MAX_GENERATION_ATTEMPTS) {
@@ -216,7 +220,12 @@ export async function generate(
   );
 }
 
-async function callLlm(provider: LlmProvider, key: string, userPrompt: string): Promise<string> {
+async function callLlm(
+  provider: LlmProvider,
+  key: string,
+  userPrompt: string,
+  maxTokens = 8192
+): Promise<string> {
   const res = await fetch(provider.endpoint, {
     method: 'POST',
     headers: {
@@ -226,7 +235,7 @@ async function callLlm(provider: LlmProvider, key: string, userPrompt: string): 
     body: JSON.stringify({
       model: provider.model,
       temperature: 0.5,
-      max_tokens: 8192,
+      max_tokens: maxTokens,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
