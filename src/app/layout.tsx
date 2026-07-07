@@ -35,11 +35,13 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     locale: 'en_US',
+    images: [`${SITE_URL}/api/og`],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
+    images: [`${SITE_URL}/api/og`],
   },
   // Static AdSense site-verification tag in <head> — crawlable without JS.
   other: { 'google-adsense-account': ADSENSE_CLIENT },
@@ -123,6 +125,7 @@ function Footer() {
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <nav className="flex gap-4 text-xs uppercase tracking-widest">
               <Link href="/about" className="hover:text-accent">About</Link>
+              <Link href="/starter-kit" className="hover:text-accent">Starter Kit</Link>
               <Link href="/sponsor" className="hover:text-accent">Sponsor</Link>
               <Link href="/feed.xml" className="hover:text-accent">RSS</Link>
             </nav>

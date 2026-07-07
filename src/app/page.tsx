@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { listPosts } from '@/lib/posts';
+import { AdSlot } from '@/components/AdSlot';
+import { ADSENSE_SLOT_HOME } from '@/lib/ads';
 
 export const revalidate = 300; // re-check content every 5 minutes
 
@@ -16,6 +18,8 @@ export default async function HomePage() {
       ) : (
         <>
           {lead && <LeadStory post={lead} />}
+          {/* Home ad slot — renders only when its ad-unit id is configured */}
+          <AdSlot slot={ADSENSE_SLOT_HOME} format="auto" className="mt-16 block" />
           {rest.length > 0 && (
             <div className="mt-20">
               <SectionRule label="More dispatches" />
