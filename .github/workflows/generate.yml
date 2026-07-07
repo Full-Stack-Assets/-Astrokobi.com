@@ -56,8 +56,8 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
           PRODUCTION_BRANCH: main
         run: |
-          git config user.name "trendblog-bot"
-          git config user.email "bot@trendblog.dev"
+          git config user.name "astrokobi-bot"
+          git config user.email "bot@astrokobi.com"
 
           git config merge.topiclog.name "union topic log entries"
           git config merge.topiclog.driver "node scripts/merge-topic-log.mjs %O %A %B"
