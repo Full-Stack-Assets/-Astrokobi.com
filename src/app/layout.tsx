@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
+import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd } from '@/lib/structured-data';
@@ -11,6 +12,29 @@ import { ADSENSE_CLIENT, ADSENSE_SLOT_FOOTER } from '@/lib/ads';
 import { siteConfig } from '@/site.config';
 import { shouldDisclose } from '@/lib/affiliate';
 import './globals.css';
+
+// Self-hosted via next/font: fonts are downloaded at build time and served
+// same-origin with size-adjusted fallbacks — no render-blocking Google Fonts
+// CSS chain, no layout shift, no third-party request on page load. The CSS
+// variables match the ones globals.css / tailwind.config already consume.
+// All three are variable fonts (default weight: 'variable'), covering the
+// weights the design uses (400–900 display, 400–600 body, 400–500 mono).
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  axes: ['opsz'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 /** Short categories (AI, DIY) read better uppercased; longer ones title-cased. */
 function navLabel(c: string): string {
@@ -47,14 +71,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="relative">
         {ADSENSE_CLIENT && (
           <Script
             async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
             crossOrigin="anonymous"
-            strategy="afterInteractive"
+            // Ads are non-critical: defer until the page is idle so the ad
+            // script never competes with content for LCP/INP (Core Web Vitals).
+            strategy="lazyOnload"
           />
         )}
         <script
@@ -123,6 +149,7 @@ function Footer() {
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <nav className="flex gap-4 text-xs uppercase tracking-widest">
               <Link href="/about" className="hover:text-accent">About</Link>
+              <Link href="/starter-kit" className="hover:text-accent">Starter Kit</Link>
               <Link href="/sponsor" className="hover:text-accent">Sponsor</Link>
               <Link href="/feed.xml" className="hover:text-accent">RSS</Link>
             </nav>
