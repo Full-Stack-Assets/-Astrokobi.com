@@ -8,7 +8,9 @@ import { articleJsonLd, faqJsonLd, breadcrumbJsonLd, SITE_URL, SITE_NAME } from 
 import { AdSlot } from '@/components/AdSlot';
 import { GearBox } from '@/components/GearBox';
 import { NewsletterCTA } from '@/components/NewsletterCTA';
-import { ADSENSE_SLOT_IN_ARTICLE } from '@/lib/ads';
+import { HeroImage } from '@/components/HeroImage';
+import { ADSENSE_SLOT_IN_ARTICLE, ADSENSE_SLOT_MID_ARTICLE } from '@/lib/ads';
+import { splitBeforeFaq } from '@/lib/split-article';
 
 export const revalidate = 300;
 
@@ -110,12 +112,14 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       {/* Hero */}
       {frontmatter.hero?.url && (
         <figure className="mb-12 -mx-6 sm:mx-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={frontmatter.hero.url}
-            alt={frontmatter.hero.alt}
-            className="aspect-video w-full object-cover"
-          />
+          <div className="relative aspect-video w-full">
+            <HeroImage
+              src={frontmatter.hero.url}
+              alt={frontmatter.hero.alt}
+              priority
+              sizes="(min-width: 768px) 768px, 100vw"
+            />
+          </div>
           {frontmatter.hero.credit && (
             <figcaption className="mt-2 px-6 sm:px-0 text-xs text-muted">
               Photo:{' '}
@@ -127,10 +131,36 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         </figure>
       )}
 
-      {/* Body */}
-      <div className="prose-editorial">
-        <MDXRemote source={body} components={mdxComponents} />
-      </div>
+      {/* Body — when a mid-article ad slot is configured, split before the FAQ
+          section (a guaranteed top-level break per the MDX contract) and place
+          one in-article unit between the halves. Without a slot id, or when a
+          post's body doesn't split cleanly, render unchanged. */}
+      {(() => {
+        const halves = ADSENSE_SLOT_MID_ARTICLE ? splitBeforeFaq(body) : null;
+        if (!halves) {
+          return (
+            <div className="prose-editorial">
+              <MDXRemote source={body} components={mdxComponents} />
+            </div>
+          );
+        }
+        return (
+          <>
+            <div className="prose-editorial">
+              <MDXRemote source={halves.before} components={mdxComponents} />
+            </div>
+            <AdSlot
+              slot={ADSENSE_SLOT_MID_ARTICLE}
+              format="fluid"
+              layout="in-article"
+              className="my-10 block text-center"
+            />
+            <div className="prose-editorial">
+              <MDXRemote source={halves.after} components={mdxComponents} />
+            </div>
+          </>
+        );
+      })()}
 
       {/* In-article ad (renders only when AdSense is configured) */}
       <AdSlot
