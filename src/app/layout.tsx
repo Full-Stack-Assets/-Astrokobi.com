@@ -59,11 +59,13 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     locale: 'en_US',
+    images: [`${SITE_URL}/api/og`],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
+    images: [`${SITE_URL}/api/og`],
   },
   // Static AdSense site-verification tag in <head> — crawlable without JS.
   other: { 'google-adsense-account': ADSENSE_CLIENT },

@@ -28,7 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const { title, description, hero, date, category, tags } = post.frontmatter;
   const url = `${SITE_URL}/blog/${slug}`;
-  const images = hero?.url ? [hero.url] : [];
+  // Fall back to a branded dynamic OG card so shares never render a blank preview.
+  const images = hero?.url ? [hero.url] : [`${SITE_URL}/api/og?title=${encodeURIComponent(title)}`];
 
   return {
     title,

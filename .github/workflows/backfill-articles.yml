@@ -47,8 +47,8 @@ jobs:
 
       - name: Commit and push
         run: |
-          git config user.name "astrokobi-bot"
-          git config user.email "bot@astrokobi.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # Union merge driver for content/.topic-log.json (mapped in .gitattributes)
           # so a rebase against a concurrent run auto-merges the log.

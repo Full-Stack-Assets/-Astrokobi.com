@@ -28,6 +28,91 @@ async function braveWebSearch(query: string): Promise<BraveWebResult[]> {
   return json.web?.results ?? [];
 }
 
+// ── Keyless fallback: Wikipedia ─────────────────────────────────
+// When Brave search yields nothing scrapable (no key, invalid key, or monthly
+// quota exhausted), research falls back to Wikipedia's free, keyless API so a
+// run degrades to encyclopedic sourcing instead of skipping entirely. This is
+// what keeps topic-based generation (seed / backfill — no source URL of its
+// own) alive when the sole search provider is down.
+
+const WIKI_API = 'https://en.wikipedia.org/w/api.php';
+
+async function wikiFetch(params: Record<string, string>): Promise<unknown> {
+  const url = new URL(WIKI_API);
+  for (const [k, v] of Object.entries({ format: 'json', ...params })) url.searchParams.set(k, v);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'user-agent': SCRAPER_UA, accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Question-style titles ("What is the Sun made of and how does it produce
+// energy") rank terribly in Wikipedia's relevance search — the filler words
+// dominate and pull in novelty matches. Strip them down to content terms.
+const WIKI_STOPWORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'best', 'by', 'can', 'do', 'does',
+  'for', 'from', 'how', 'in', 'into', 'is', 'it', 'its', 'of', 'on', 'or',
+  'our', 'should', 'that', 'the', 'their', 'them', 'they', 'this', 'to', 'was',
+  'we', 'what', 'when', 'where', 'which', 'why', 'will', 'with', 'you', 'your',
+]);
+
+function wikiQuery(query: string): string {
+  const words = query.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const terms = words.filter((w) => w.length > 1 && !WIKI_STOPWORDS.has(w));
+  return (terms.length >= 2 ? terms : words).slice(0, 8).join(' ');
+}
+
+async function wikipediaArticles(
+  query: string,
+  limit = 3
+): Promise<{ url: string; title: string; content: string }[]> {
+  try {
+    const search = (await wikiFetch({
+      action: 'query',
+      list: 'search',
+      srsearch: wikiQuery(query),
+      srlimit: String(limit),
+    })) as { query?: { search?: { title: string; pageid: number }[] } } | null;
+    const hits = search?.query?.search ?? [];
+    if (hits.length === 0) return [];
+
+    const pages = await Promise.all(
+      hits.map(async (hit) => {
+        try {
+          // Full plain-text extracts are limited to one page per request.
+          const data = (await wikiFetch({
+            action: 'query',
+            prop: 'extracts',
+            explaintext: '1',
+            pageids: String(hit.pageid),
+          })) as { query?: { pages?: Record<string, { title?: string; extract?: string }> } } | null;
+          const page = data?.query?.pages?.[String(hit.pageid)];
+          const content = page?.extract?.trim().slice(0, 6000) ?? '';
+          if (content.length < 200) return null; // stubs aren't research
+          return {
+            url: `https://en.wikipedia.org/?curid=${hit.pageid}`,
+            title: page?.title || hit.title,
+            content,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    return pages.filter((p): p is NonNullable<typeof p> => p !== null);
+  } catch {
+    return [];
+  }
+}
+
 async function scrapeArticle(url: string): Promise<{ title: string; content: string } | null> {
   try {
     const controller = new AbortController();
@@ -120,6 +205,19 @@ export async function research(
   if (winner.source !== 'youtube') {
     const w = await scrapeArticle(winner.url);
     if (w) articles.unshift({ url: winner.url, title: w.title || winner.title, content: w.content });
+  }
+
+  // Nothing scrapable via Brave (or no Brave at all)? Fall back to Wikipedia so
+  // the run degrades to encyclopedic sources instead of skipping. Especially
+  // vital for topic-based generation, where the winner has no URL to scrape.
+  if (articles.length === 0) {
+    // Use the full title, not the 10-word Brave query — wikiQuery strips the
+    // filler itself, and truncating first can drop the load-bearing terms.
+    const wiki = await wikipediaArticles(winner.title);
+    if (wiki.length > 0) {
+      console.warn(`research: no scrapable web sources; using ${wiki.length} Wikipedia article(s)`);
+      articles.push(...wiki);
+    }
   }
 
   // Pull transcripts from any related YouTube items (and the winner if it's YT)
