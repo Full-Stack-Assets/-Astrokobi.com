@@ -184,6 +184,17 @@ export async function generate(
       content = await callLlm(provider, providerKey, userPrompt, maxTokens);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
+      if (
+        !failedOver &&
+        provider === PRIMARY_LLM &&
+        FALLBACK_LLM &&
+        fallbackKey &&
+        isAvailabilityError(lastError)
+      ) {
+        provider = FALLBACK_LLM;
+        providerKey = fallbackKey;
+        failedOver = true;
+      }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
         await sleep(Math.min(30_000, 1000 * 2 ** attempt));
       }
