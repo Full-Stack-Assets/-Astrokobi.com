@@ -184,6 +184,20 @@ export async function generate(
       content = await callLlm(provider, providerKey, userPrompt, maxTokens);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
+      // Availability failure (429 quota/rate-limit, 5xx, "overloaded") on the
+      // primary: switch to the backup provider for the remaining attempts
+      // instead of hammering a dead endpoint. This is what kept the hourly run
+      // down for two days when Gemini's prepaid credits depleted — the 429
+      // matched isAvailabilityError but nothing ever consulted it.
+      if (!failedOver && FALLBACK_LLM && fallbackKey && isAvailabilityError(lastError)) {
+        console.warn(
+          `generate: ${provider.model} unavailable (${lastError.slice(0, 140)}…) — failing over to ${FALLBACK_LLM.model}`
+        );
+        provider = FALLBACK_LLM;
+        providerKey = fallbackKey;
+        failedOver = true;
+        continue; // retry immediately on the backup, no backoff
+      }
       if (attempt < MAX_GENERATION_ATTEMPTS) {
         await sleep(Math.min(30_000, 1000 * 2 ** attempt));
       }
