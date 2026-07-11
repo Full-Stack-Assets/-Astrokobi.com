@@ -104,8 +104,8 @@ function Header() {
   const brandLast = words.pop();
   const brandLead = words.join(' ');
   return (
-    <header className="relative z-20 border-b border-ink/20">
-      <div className="mx-auto flex max-w-6xl items-end justify-between px-6 py-6">
+    <header className="sticky top-0 z-20 border-b border-ink/10 bg-paper/70 backdrop-blur-md supports-[backdrop-filter]:bg-paper/60">
+      <div className="mx-auto flex max-w-6xl items-end justify-between px-6 py-5">
         <Link href="/" className="group">
           <div className="font-display text-3xl font-black tracking-tight leading-none">
             {brandLead ? `${brandLead} ` : ''}<span className="text-accent">{brandLast}</span>
@@ -133,7 +133,7 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="relative z-10 mt-32 border-t border-ink/20">
+    <footer className="relative z-10 mt-32 border-t border-ink/10 bg-ink/[0.02]">
       <div className="mx-auto max-w-6xl px-6 py-10 text-sm text-muted">
         <AdSlot slot={ADSENSE_SLOT_FOOTER} format="auto" className="mb-8 block" />
         <div className="mb-8 flex flex-col gap-4 border-b border-ink/15 pb-8 sm:flex-row sm:items-center sm:justify-between">
