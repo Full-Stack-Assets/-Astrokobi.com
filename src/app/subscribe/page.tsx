@@ -18,7 +18,7 @@ export default async function SubscribePage() {
     <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <div className="text-xs uppercase tracking-[0.3em] text-muted">Newsletter</div>
       <h1 className="mt-2 font-display text-4xl font-black leading-[1.05] sm:text-5xl">
-        Look up, <span className="text-accent">once a week.</span>
+        Look up, <span className="text-aurora">once a week.</span>
       </h1>
       <p className="mt-5 text-lg leading-relaxed text-ink/75">
         Every week we send <strong>This Week in the Sky</strong> — what to look for overhead

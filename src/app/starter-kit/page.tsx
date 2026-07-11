@@ -13,7 +13,7 @@ export default function StarterKitPage() {
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="text-xs uppercase tracking-[0.3em] text-muted">Free guide</div>
       <h1 className="mt-2 font-display text-4xl font-black leading-tight sm:text-5xl">
-        The Stargazing Starter Kit
+        <span className="text-aurora">The Stargazing Starter Kit</span>
       </h1>
       <p className="mt-4 text-lg leading-relaxed text-ink/75">
         Everything you need for your first few nights under the sky — no telescope, no jargon.

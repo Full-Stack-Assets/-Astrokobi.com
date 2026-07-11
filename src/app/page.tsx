@@ -55,7 +55,7 @@ function Masthead() {
       </div>
       <h1 className="mt-4 font-display text-5xl sm:text-7xl font-black leading-[0.95] tracking-tight">
         {nameLead ? `${nameLead} ` : ''}
-        <span className="bg-gradient-to-r from-accent to-violet-400 bg-clip-text text-transparent">{nameLast}</span>
+        <span className="text-aurora">{nameLast}</span>
       </h1>
       <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
         {siteConfig.description}
