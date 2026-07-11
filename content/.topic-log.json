@@ -1191,13 +1191,6 @@
       "signature": "2cea49a742642be3"
     },
     {
-      "slug": "planned-1-7-million-satellites-threaten-astronomy",
-      "title": "Planned 1.7 million satellites 'devastating' for astronomy: Study",
-      "url": "https://phys.org/news/2026-07-million-satellites-devastating-astronomy.html",
-      "publishedAt": "2026-07-05T05:57:12.948Z",
-      "signature": "2cea49a742642be3"
-    },
-    {
       "slug": "newly-discovered-super-puff-exoplanets-lighter-than-cotton-c",
       "title": "Astronomers find biggest super-puff planets yet that are lighter than cotton candy",
       "url": "https://phys.org/news/2026-06-astronomers-biggest-super-puff-planets.html",
@@ -1427,6 +1420,13 @@
       "url": "https://www.bbc.com/news/articles/c8x2kyr4wv5o",
       "publishedAt": "2026-07-11T02:04:27.982Z",
       "signature": "5ed275462cdaf9b9"
+    },
+    {
+      "slug": "ligo-detects-gravitational-waves",
+      "title": "Gravitational waves and how LIGO detects them",
+      "url": "",
+      "publishedAt": "2026-06-09T12:00:00.000Z",
+      "signature": "d3b554674a80e162"
     }
   ]
 }
