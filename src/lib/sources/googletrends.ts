@@ -1,5 +1,6 @@
 import Parser from 'rss-parser';
 import type { RawItem } from '../orchestrator/types';
+import { siteConfig } from '@/site.config';
 
 // Google Trends' "Trending now" feed for the US. No API key needed.
 const TRENDS_RSS = 'https://trends.google.com/trending/rss?geo=US';
@@ -27,6 +28,27 @@ const SPACE_TERMS = [
 ];
 // Single case-insensitive regex; spaces in multi-word terms allow any whitespace.
 const SPACE_RE = new RegExp('\\b(' + SPACE_TERMS.join('|').replace(/ /g, '\\s+') + ')\\b', 'i');
+
+// Known false positives: phrases where a space term is part of an unrelated
+// brand or name, so the word-boundary match above still fires — "Pluto TV"
+// published a cord-cutting article here via the dwarf planet. These phrases
+// are blanked out of the haystack BEFORE the niche match, so they can't
+// trigger it on their own; a story that also mentions a genuine space term
+// (e.g. "NASA") still passes. Grow this list as new impostors appear.
+const AMBIGUOUS_PHRASES = [
+  'pluto tv',
+  'samsung galaxy', 'la galaxy', 'galaxy s', 'galaxy z', 'galaxy tab', 'galaxy watch', 'galaxy buds',
+  'rocket league', 'rocket mortgage', 'houston rockets',
+  'bruno mars', 'mars bar', 'mars bars', 'thirty seconds to mars', 'veronica mars',
+  'venus williams', 'venus razor',
+  'sailor moon', 'moon knight', 'moonshine',
+  'orbit gum', 'artemis fowl', 'apollo creed', 'luna park',
+  'eclipse mitsubishi', 'twilight eclipse',
+];
+const AMBIGUOUS_RE = new RegExp(
+  '(' + AMBIGUOUS_PHRASES.join('|').replace(/ /g, '\\s+') + ')',
+  'gi'
+);
 
 type TrendItemFields = {
   'ht:approx_traffic'?: string;
@@ -60,7 +82,11 @@ export async function parseTrendsXml(xml: string): Promise<RawItem[]> {
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
-    headers: { 'user-agent': 'Mozilla/5.0 (compatible; WireAndLogicBot/1.0)' },
+    headers: {
+      // Branded UA derived from siteConfig (matches research.ts) — the old
+      // hardcoded "WireAndLogicBot" was a pre-rebrand leftover.
+      'user-agent': `Mozilla/5.0 (compatible; ${siteConfig.name.replace(/\s+/g, '')}Bot/1.0; +${siteConfig.url})`,
+    },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
@@ -81,8 +107,9 @@ export function toRawItems(items: TrendItem[]): RawItem[] {
       term,
       ...news.map((n) => `${field(n, 'ht:news_item_title')} ${field(n, 'ht:news_item_source')}`),
     ].join(' ');
+    // Neutralize known-ambiguous brand phrases first, then niche-match.
     // SPACE_RE is case-insensitive, so no need to lowercase the haystack.
-    if (!SPACE_RE.test(haystack)) continue;
+    if (!SPACE_RE.test(haystack.replace(AMBIGUOUS_RE, ' '))) continue;
 
     // Prefer a related news headline + URL so the research step has something
     // concrete to scrape; fall back to a Google search for the bare term.
