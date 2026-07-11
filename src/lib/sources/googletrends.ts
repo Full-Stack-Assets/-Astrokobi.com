@@ -98,22 +98,32 @@ type TrendItem = TrendItemFields & { title?: string; isoDate?: string; pubDate?:
 export function toRawItems(items: TrendItem[]): RawItem[] {
   const out: RawItem[] = [];
 
+  // Neutralize known-ambiguous brand phrases first, then niche-match.
+  // SPACE_RE is case-insensitive, so no need to lowercase the text.
+  const onNiche = (text: string) => SPACE_RE.test(text.replace(AMBIGUOUS_RE, ' '));
+
   for (const entry of items) {
     const term = String(entry.title ?? '').trim();
     if (!term) continue;
 
     const news = entry['ht:news_item'] ?? [];
-    const haystack = [
-      term,
-      ...news.map((n) => `${field(n, 'ht:news_item_title')} ${field(n, 'ht:news_item_source')}`),
-    ].join(' ');
-    // Neutralize known-ambiguous brand phrases first, then niche-match.
-    // SPACE_RE is case-insensitive, so no need to lowercase the haystack.
-    if (!SPACE_RE.test(haystack.replace(AMBIGUOUS_RE, ' '))) continue;
 
-    // Prefer a related news headline + URL so the research step has something
-    // concrete to scrape; fall back to a Google search for the bare term.
-    const top = news.find((n) => field(n, 'ht:news_item_url'));
+    // The niche match is evaluated PER HEADLINE, against the headline actually
+    // used — not a pooled haystack of every related headline. Pooling let one
+    // on-niche sibling whitelist a completely different off-niche top headline,
+    // which is how a celebrity-lingerie story got published here. Prefer the
+    // first related headline that is itself on-niche; otherwise the item only
+    // survives if the trend term itself is on-niche.
+    const onNicheTop = news.find(
+      (n) =>
+        field(n, 'ht:news_item_url') &&
+        onNiche(`${field(n, 'ht:news_item_title')} ${field(n, 'ht:news_item_source')}`)
+    );
+    if (!onNicheTop && !onNiche(term)) continue;
+
+    // Prefer a concrete (on-niche when available) headline + URL so research
+    // has something to scrape; fall back to a Google search for the bare term.
+    const top = onNicheTop ?? news.find((n) => field(n, 'ht:news_item_url'));
     const title = (top && field(top, 'ht:news_item_title')) || term;
     const url =
       (top && field(top, 'ht:news_item_url')) ||
