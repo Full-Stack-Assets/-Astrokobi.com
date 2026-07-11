@@ -87,15 +87,16 @@ export const siteConfig = {
   // ── Engine: writer LLM (Groq, OpenAI-compatible) ──────────────
   llm: {
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     apiKeyEnv: 'GROQ_API_KEY',
   },
 
-  // Automatic failover: if the primary Groq model is rate-limited or errors,
-  // generate.ts retries against this smaller Groq model (same API key).
+  // Automatic failover: if the primary Groq model returns availability errors
+  // (429 rate limit / 5xx / "overloaded"), generate.ts switches the remaining
+  // attempts to this smaller Groq model (same API key).
   llmFallback: {
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    model: 'llama-3.1-8b-instant',
+    model: 'openai/gpt-oss-20b',
     apiKeyEnv: 'GROQ_API_KEY',
   },
 

@@ -202,7 +202,7 @@ Dedup uses a sorted-token fingerprint of the title, so "JWST spots new galaxy" a
 - **Add a source:** drop a new file in `src/lib/sources/`, export a function returning `RawItem[]`, and add it to the `Promise.all` in `pipeline.ts`.
 - **Tune the tone:** edit `SYSTEM_PROMPT` in `generate.ts`. The zod schema will catch anything structurally broken.
 - **Change the niche / sources:** adjust `audience`, `categories`, and `sources` (`subreddits`, `rssFeeds`, `braveQueries`) in `src/site.config.ts`.
-- **Swap the LLM:** edit the `llm` block in `src/site.config.ts` (any OpenAI-compatible endpoint — Groq, OpenRouter, Gemini), and set the matching `apiKeyEnv` secret.
+- **Swap the LLM:** edit the `llm` block in `src/site.config.ts` (any OpenAI-compatible endpoint — Groq, OpenRouter, etc.), and set the matching `apiKeyEnv` secret.
 - **Change the cadence:** edit the `cron` in `.github/workflows/generate.yml` (e.g. `0 */2 * * *` for every two hours, `0 12 * * *` for daily).
 
 ---
