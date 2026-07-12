@@ -42,7 +42,7 @@ const AMBIGUOUS_PHRASES = [
   'bruno mars', 'mars bar', 'mars bars', 'thirty seconds to mars', 'veronica mars',
   'venus williams', 'venus razor',
   'sailor moon', 'moon knight', 'moonshine',
-  'orbit gum', 'artemis fowl', 'apollo creed', 'luna park',
+  'orbit gum', 'artemis fowl', 'apollo creed', 'luna park', 'space city',
   'eclipse mitsubishi', 'twilight eclipse',
 ];
 const AMBIGUOUS_RE = new RegExp(
@@ -114,10 +114,13 @@ export function toRawItems(items: TrendItem[]): RawItem[] {
     // which is how a celebrity-lingerie story got published here. Prefer the
     // first related headline that is itself on-niche; otherwise the item only
     // survives if the trend term itself is on-niche.
+    //
+    // HEADLINE TEXT ONLY — the outlet's name is deliberately excluded from the
+    // match: "Space City Weather" (a Houston weather blog; Space City = Houston)
+    // whitelisted a thunderstorm forecast via the word "space". A genuinely
+    // on-niche story carries a niche term in its own headline.
     const onNicheTop = news.find(
-      (n) =>
-        field(n, 'ht:news_item_url') &&
-        onNiche(`${field(n, 'ht:news_item_title')} ${field(n, 'ht:news_item_source')}`)
+      (n) => field(n, 'ht:news_item_url') && onNiche(field(n, 'ht:news_item_title'))
     );
     if (!onNicheTop && !onNiche(term)) continue;
 
