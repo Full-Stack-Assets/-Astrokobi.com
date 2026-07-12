@@ -28,6 +28,21 @@ export interface PipelineOptions {
   topicLog?: TopicLog;
 }
 
+/** How far back a logged topic blocks a re-pick of the same story. */
+const RECENT_TOPIC_WINDOW_DAYS = 14;
+
+/** The slice of the topic log that is recent enough to veto a winner.
+ *  An unparseable publishedAt is treated as recent (safe: blocks, not crashes). */
+export function recentTopics(log: TopicLog): TopicLog {
+  const cutoff = Date.now() - RECENT_TOPIC_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return {
+    topics: log.topics.filter((t) => {
+      const ts = new Date(t.publishedAt).getTime();
+      return !Number.isFinite(ts) || ts >= cutoff;
+    }),
+  };
+}
+
 export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineResult & { mdx?: string }> {
   const timings: Record<string, number> = {};
   const t = (label: string) => {
@@ -60,12 +75,15 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineR
     const doneScore = t('score');
     const scored = dedupe(score(allItems));
     const topicLog = opts.topicLog ?? (opts.dryRun ? { topics: [] } : await loadTopicLog());
-    // AstroKobi intentionally DISREGARDS the topic log when picking a winner:
-    // the log had saturated, starving the hourly run of fresh winners ("no new
-    // topic"). Pass an empty log so pickWinner returns the top-scored (still
-    // in-run-deduped) candidate regardless of whether it was covered before.
-    // The real topicLog is still loaded above and updated/recorded below.
-    const winner = pickWinner(scored, { topics: [] });
+    // Consult only the RECENT window of the topic log when picking a winner.
+    // The two failure modes this threads between:
+    //  - All-time log: saturates and starves the hourly run of fresh winners
+    //    ("no new topic") — which is why it was bypassed entirely for a while.
+    //  - Empty log (the old bypass): a story that stays top-scored for hours
+    //    wins every tick and gets republished under a new LLM-written slug —
+    //    four near-identical posts shipped in one afternoon that way.
+    // A windowed view blocks the repeats while old entries still age out.
+    const winner = pickWinner(scored, recentTopics(topicLog));
     doneScore();
 
     if (!winner) {
