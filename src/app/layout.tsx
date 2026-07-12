@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
-import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
+import { Sora, Inter, JetBrains_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd } from '@/lib/structured-data';
@@ -18,10 +18,10 @@ import './globals.css';
 // CSS chain, no layout shift, no third-party request on page load. The CSS
 // variables match the ones globals.css / tailwind.config already consume.
 // All three are variable fonts (default weight: 'variable'), covering the
-// weights the design uses (400–900 display, 400–600 body, 400–500 mono).
-const fraunces = Fraunces({
+// weights the design uses (display 400–800 — `font-black` renders at Sora's
+// 800 max; body 400–600; mono 400–500).
+const sora = Sora({
   subsets: ['latin'],
-  axes: ['opsz'],
   variable: '--font-display',
   display: 'swap',
 });
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${sora.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="relative">
         {ADSENSE_CLIENT && (
           <Script
@@ -104,11 +104,11 @@ function Header() {
   const brandLast = words.pop();
   const brandLead = words.join(' ');
   return (
-    <header className="relative z-20 border-b border-ink/20">
-      <div className="mx-auto flex max-w-6xl items-end justify-between px-6 py-6">
+    <header className="header-glass sticky top-0 z-20 border-b border-ink/10 bg-paper/70">
+      <div className="mx-auto flex max-w-6xl items-end justify-between px-6 py-5">
         <Link href="/" className="group">
           <div className="font-display text-3xl font-black tracking-tight leading-none">
-            {brandLead ? `${brandLead} ` : ''}<span className="text-accent">{brandLast}</span>
+            {brandLead ? `${brandLead} ` : ''}<span className="text-aurora">{brandLast}</span>
           </div>
           <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted">
             {siteConfig.tagline}
@@ -133,7 +133,7 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="relative z-10 mt-32 border-t border-ink/20">
+    <footer className="relative z-10 mt-32 border-t border-ink/10 bg-ink/[0.02]">
       <div className="mx-auto max-w-6xl px-6 py-10 text-sm text-muted">
         <AdSlot slot={ADSENSE_SLOT_FOOTER} format="auto" className="mb-8 block" />
         <div className="mb-8 flex flex-col gap-4 border-b border-ink/15 pb-8 sm:flex-row sm:items-center sm:justify-between">

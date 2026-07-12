@@ -55,7 +55,6 @@ jobs:
       - name: Run seed
         env:
           # LLM key — name must match `llm.apiKeyEnv` in src/site.config.ts.
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           # Required: evergreen topics have no source URL, so research needs web search.
@@ -80,7 +79,7 @@ jobs:
             new_posts=$(git status --porcelain -- content/posts \
               | grep -E '\.mdx$' | grep -vE '^.D' | wc -l | tr -d ' ' || true)
             if [ "${new_posts:-0}" -eq 0 ]; then
-              echo "::error::purge was requested but the seed produced 0 new posts — refusing to commit a wiped catalog. Check that GEMINI_API_KEY and BRAVE_API_KEY are set." >&2
+              echo "::error::purge was requested but the seed produced 0 new posts — refusing to commit a wiped catalog. Check that GROQ_API_KEY and BRAVE_API_KEY are set." >&2
               exit 1
             fi
             echo "Purge run wrote ${new_posts} new post(s); proceeding to commit."

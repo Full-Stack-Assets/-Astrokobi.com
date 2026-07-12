@@ -32,7 +32,7 @@ export default function SponsorPage() {
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-10 border-b-2 border-ink pb-6">
         <div className="text-xs uppercase tracking-[0.3em] text-muted">Media kit</div>
-        <h1 className="mt-2 font-display text-5xl font-black">Sponsor {siteConfig.name}</h1>
+        <h1 className="mt-2 font-display text-5xl font-black text-aurora">Sponsor {siteConfig.name}</h1>
         <p className="mt-4 font-display text-xl leading-snug text-ink/70">
           Put your brand in front of {siteConfig.audience} — in a clean, single-sponsor
           format that readers actually trust.

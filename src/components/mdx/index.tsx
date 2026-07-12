@@ -6,15 +6,15 @@ import { NewsletterCTA } from '@/components/NewsletterCTA';
 type CalloutType = 'takeaway' | 'warning' | 'note';
 
 const CALLOUT_CONFIG: Record<CalloutType, { label: string; bg: string; border: string; accent: string }> = {
-  takeaway: { label: 'Takeaway', bg: 'bg-accent/5', border: 'border-accent', accent: 'text-accent' },
-  warning:  { label: 'Watch out', bg: 'bg-ink/[0.04]', border: 'border-ink', accent: 'text-ink' },
-  note:     { label: 'Note', bg: 'bg-ink/[0.03]', border: 'border-muted', accent: 'text-muted' },
+  takeaway: { label: 'Takeaway', bg: 'bg-accent/10', border: 'border-accent', accent: 'text-accent' },
+  warning:  { label: 'Watch out', bg: 'bg-amber-400/10', border: 'border-amber-400', accent: 'text-amber-300' },
+  note:     { label: 'Note', bg: 'bg-ink/[0.04]', border: 'border-muted', accent: 'text-muted' },
 };
 
 export function Callout({ type = 'note', children }: { type?: CalloutType; children: ReactNode }) {
   const c = CALLOUT_CONFIG[type];
   return (
-    <aside className={`my-8 border-l-4 ${c.border} ${c.bg} pl-5 pr-5 py-4`}>
+    <aside className={`my-8 rounded-r-lg border-l-4 ${c.border} ${c.bg} pl-5 pr-5 py-4`}>
       <div className={`mb-1 text-[10px] font-bold uppercase tracking-[0.2em] ${c.accent}`}>
         {c.label}
       </div>
@@ -25,7 +25,7 @@ export function Callout({ type = 'note', children }: { type?: CalloutType; child
 
 export function ProsCons({ children }: { children: ReactNode }) {
   return (
-    <div className="my-10 grid gap-4 border border-ink/20 bg-paper sm:grid-cols-2 sm:gap-0">
+    <div className="my-10 grid gap-4 overflow-hidden rounded-xl border border-ink/15 bg-ink/[0.03] sm:grid-cols-2 sm:gap-0">
       {children}
     </div>
   );
@@ -33,7 +33,7 @@ export function ProsCons({ children }: { children: ReactNode }) {
 
 export function Pros({ children }: { children: ReactNode }) {
   return (
-    <div className="border-t-4 border-accent p-6 sm:border-r sm:border-r-ink/20 sm:border-t-4">
+    <div className="border-t-4 border-accent p-6 sm:border-r sm:border-r-ink/15 sm:border-t-4">
       <div className="mb-3 flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-accent">
         <span className="text-lg leading-none">+</span> Pros
       </div>
@@ -44,8 +44,8 @@ export function Pros({ children }: { children: ReactNode }) {
 
 export function Cons({ children }: { children: ReactNode }) {
   return (
-    <div className="border-t-4 border-ink p-6">
-      <div className="mb-3 flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-ink">
+    <div className="border-t-4 border-muted p-6">
+      <div className="mb-3 flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-muted">
         <span className="text-lg leading-none">–</span> Cons
       </div>
       <ul className="space-y-2 text-base">{children}</ul>
@@ -55,7 +55,7 @@ export function Cons({ children }: { children: ReactNode }) {
 
 export function FAQ({ children }: { children: ReactNode }) {
   return (
-    <div className="my-10 divide-y divide-ink/15 border-t border-b border-ink/20">
+    <div className="my-10 divide-y divide-ink/10 rounded-xl border border-ink/15 bg-ink/[0.02] px-5">
       {children}
     </div>
   );
@@ -150,7 +150,7 @@ export function GearPick({
  */
 export function GearBox({ title = 'Recommended gear', children }: { title?: string; children: ReactNode }) {
   return (
-    <aside className="my-10 border border-ink/20 bg-ink/[0.02] p-6">
+    <aside className="my-10 rounded-xl border border-ink/15 bg-ink/[0.03] p-6">
       <div className="mb-1 font-display text-sm font-bold uppercase tracking-[0.2em] text-accent">
         {title}
       </div>

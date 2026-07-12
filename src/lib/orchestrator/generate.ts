@@ -11,9 +11,16 @@ type LlmProvider = { endpoint: string; model: string; apiKeyEnv: string };
 const PRIMARY_LLM: LlmProvider = siteConfig.llm;
 const FALLBACK_LLM: LlmProvider | undefined = (siteConfig as { llmFallback?: LlmProvider }).llmFallback;
 
-/** A transient provider error worth failing over to the backup LLM for. */
+/** A transient provider error worth failing over to the backup LLM for.
+ *  Includes 413 / "request too large": Groq admits a request only if
+ *  input + requested output fit the model's per-minute token budget, so an
+ *  over-budget request is rejected outright — retrying the same model can't
+ *  help, but the fallback (higher TPM cap) can absorb it. */
 function isAvailabilityError(msg: string): boolean {
-  return /API error (?:429|5\d\d)\b/.test(msg) || /overloaded|unavailable|high demand/i.test(msg);
+  return (
+    /API error (?:413|429|5\d\d)\b/.test(msg) ||
+    /overloaded|unavailable|high demand|too large/i.test(msg)
+  );
 }
 
 /** How many times to ask the model before giving up on a structurally valid post. */
@@ -163,10 +170,14 @@ export async function generate(
   const schema = opts.minBodyChars
     ? PostSchema.extend({ body: z.string().min(opts.minBodyChars) })
     : PostSchema;
-  // Long-form output needs more headroom: on thinking models (Gemini 2.5) the
-  // OpenAI-compat max_tokens covers reasoning tokens too, so a ~2200-word JSON
-  // payload gets truncated mid-object at the standard cap ("not valid JSON").
-  const maxTokens = opts.targetWords || opts.minBodyChars ? 16384 : 8192;
+  // Token budget: Groq's free tier counts input + requested max_tokens at
+  // admission against an 8K tokens-per-minute cap on the primary model, and
+  // rejects an oversized single request outright (413 "request too large").
+  // The standard cap of 3584 plus the trimmed research prompt (~3.5-4K tokens)
+  // stays under that ceiling. Long-form runs still need real headroom for a
+  // ~2200-word JSON payload; they exceed the primary's budget by design and
+  // ride the 413 failover to the fallback model (30K TPM).
+  const maxTokens = opts.targetWords || opts.minBodyChars ? 16384 : 3584;
   let lastError = '';
 
   // PostSchema heals the clampable overshoots on its own. Retry only covers the
@@ -238,7 +249,7 @@ async function callLlm(
   provider: LlmProvider,
   key: string,
   userPrompt: string,
-  maxTokens = 8192
+  maxTokens = 3584
 ): Promise<string> {
   const res = await fetch(provider.endpoint, {
     method: 'POST',
@@ -311,18 +322,21 @@ function buildUserPrompt(bundle: ResearchBundle, targetWords?: number): string {
     ? `\n\n## Length requirement\nThis is a long-form, in-depth feature — write a substantially longer and more detailed body than usual. Target approximately ${targetWords} words total (roughly double the normal length): go deeper in "What happened" and "Why it matters", broaden the pros/cons with more items, and make "How to think about it" more thorough with concrete detail. Do not pad with repetition, filler, or invented content — every added sentence must be substantive and grounded in the research provided.`
     : '';
 
+  // Excerpt sizes are budgeted against Groq's free-tier 8K TPM admission cap:
+  // ~4 articles × 2400 chars + transcripts × 1600 chars keeps the whole user
+  // prompt near 3.5-4K tokens, leaving room for the 3584-token output request.
   const articleBlock = articles
     .map(
       (a, i) => `### Source ${i + 1}: ${a.title}
 URL: ${a.url}
-${a.content.slice(0, 4000)}`
+${a.content.slice(0, 2400)}`
     )
     .join('\n\n');
 
   const transcriptBlock = transcripts.length
     ? '\n\n## Video transcripts\n' +
       transcripts
-        .map((t) => `### ${t.title}\n${t.text.slice(0, 3000)}`)
+        .map((t) => `### ${t.title}\n${t.text.slice(0, 1600)}`)
         .join('\n\n')
     : '';
 
