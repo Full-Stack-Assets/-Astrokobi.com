@@ -33,11 +33,20 @@ export function serialize(post: GeneratedPost, date: Date = new Date()): string 
  * the inner double quotes with single quotes so the attribute stays well-formed.
  */
 export function sanitizeBody(body: string): string {
-  return body.replace(
-    /(<Question\s+q=")([^\n]*?)(">)/g,
-    (_match, open: string, question: string, close: string) =>
-      `${open}${question.replace(/"/g, "'")}${close}`
-  );
+  return body
+    // `Answer` is not part of the MDX component contract. Some models invent
+    // it as a wrapper inside Question; the answer text is already the intended
+    // Question child, so remove only the unsupported wrapper tags.
+    .replace(/<Answer(?:\s[^>]*)?>/g, '')
+    .replace(/<\/Answer>/g, '')
+    // When text starts on the opening-tag line, MDX treats the component as
+    // inline JSX and requires its closing tag before that paragraph ends.
+    .replace(/(<(Callout|Question)\b[^>]*>[^\n]*)\r?\n[ \t]*<\/\2>/g, '$1</$2>')
+    .replace(
+      /(<Question\s+q=")([^\n]*?)(">)/g,
+      (_match, open: string, question: string, close: string) =>
+        `${open}${question.replace(/"/g, "'")}${close}`
+    );
 }
 
 function toYaml(obj: unknown, indent = 0): string {
