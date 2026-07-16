@@ -1861,6 +1861,13 @@
       "url": "https://earthsky.org/space/shoemaker-levy-9-impact-jupiter-july-1994/",
       "publishedAt": "2026-07-16T11:26:26.285Z",
       "signature": "03cb59f80abda9dd"
+    },
+    {
+      "slug": "noaa-goes-19-satellite-outage",
+      "title": "The main NOAA satellite for tracking Atlantic, Gulf Coast hurricanes is out until further notice",
+      "url": "https://www.nola.com/news/hurricane/weather-satellite-goes-19-out/article_75a9d7be-1e36-4bf1-b55f-26ff9a369157.html",
+      "publishedAt": "2026-07-16T13:16:04.049Z",
+      "signature": "695f2f8e7a370da1"
     }
   ]
 }
