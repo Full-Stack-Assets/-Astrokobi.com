@@ -2162,6 +2162,27 @@
       "url": "https://science.nasa.gov/earth/earth-observatory/sizing-up-the-sargassum-belt/",
       "publishedAt": "2026-07-29T04:57:54.397Z",
       "signature": "6478e3ccf97d4cea"
+    },
+    {
+      "slug": "solar-cycle-sunspots-flares",
+      "title": "The solar cycle and how sunspots and solar flares work",
+      "url": "",
+      "publishedAt": "2026-07-29T04:53:01.729Z",
+      "signature": "80babcfe4d4349c1"
+    },
+    {
+      "slug": "jupiters-great-red-spot-300-year-storm",
+      "title": "Jupiter: the largest planet and its Great Red Spot",
+      "url": "",
+      "publishedAt": "2026-07-29T02:53:01.729Z",
+      "signature": "90a126c5439a914d"
+    },
+    {
+      "slug": "titan-methane-lakes-saturn-moon",
+      "title": "Titan: Saturn’s moon with lakes of liquid methane",
+      "url": "",
+      "publishedAt": "2026-07-29T01:41:01.729Z",
+      "signature": "b3b1c9dd315725ed"
     }
   ]
 }
