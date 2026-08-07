@@ -22,7 +22,9 @@ export interface Post {
 
 const POSTS_DIR = path.join(process.cwd(), 'content', 'posts');
 
-export async function listPosts(): Promise<Post[]> {
+let productionPostsPromise: Promise<Post[]> | undefined;
+
+async function readPosts(): Promise<Post[]> {
   let files: string[] = [];
   try {
     files = await fs.readdir(POSTS_DIR);
@@ -43,6 +45,17 @@ export async function listPosts(): Promise<Post[]> {
       return Number.isNaN(t) || t <= now;
     })
     .sort((a, b) => b.frontmatter.date.localeCompare(a.frontmatter.date));
+}
+
+export function listPosts(): Promise<Post[]> {
+  // Static generation calls this once per route. Reusing the parsed corpus in
+  // production avoids rereading and reparsing every MDX file for each of the
+  // site's tag and article pages, which can exceed Render's per-page timeout.
+  if (process.env.NODE_ENV === 'production') {
+    productionPostsPromise ??= readPosts();
+    return productionPostsPromise;
+  }
+  return readPosts();
 }
 
 export async function loadPost(slug: string): Promise<Post | null> {
