@@ -4,7 +4,7 @@ const nextConfig = {
   experimental: {
     // Keep Render's small build instance from spawning too many prerender
     // workers while generating the site's large tag archive.
-    staticGenerationMaxConcurrency: 1,
+    staticGenerationMaxConcurrency: 4,
     staticGenerationMinPagesPerWorker: 50,
     webpackMemoryOptimizations: true,
   },
