@@ -13,8 +13,10 @@ function env(v: string | undefined): string | undefined {
   return t && t.length > 0 ? t : undefined;
 }
 
-export const ADSENSE_CLIENT =
+export const ADSENSE_PUBLISHER_ID =
   env(process.env.NEXT_PUBLIC_ADSENSE_CLIENT) ?? siteConfig.adsenseClient;
+export const ADSENSE_CLIENT =
+  process.env.NEXT_PUBLIC_GOOGLE_CERTIFIED_CMP_ACTIVE === 'true' ? ADSENSE_PUBLISHER_ID : undefined;
 
 /** In-article unit rendered after the post body (before the gear box). */
 export const ADSENSE_SLOT_IN_ARTICLE = env(process.env.NEXT_PUBLIC_ADSENSE_SLOT_IN_ARTICLE);

@@ -129,6 +129,9 @@ export function GearPick({
           href={url}
           target="_blank"
           rel="sponsored nofollow noopener noreferrer"
+          data-analytics-event="affiliate_click"
+          data-merchant="amazon"
+          data-placement="inline_gear_pick"
           className="font-display font-semibold text-accent underline-offset-2 hover:underline"
         >
           {name}

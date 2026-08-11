@@ -83,7 +83,7 @@ export default function SponsorPage() {
         <h2>Get in touch</h2>
         <p>
           Email{' '}
-          <a className="text-accent underline" href={`mailto:${SPONSOR_EMAIL}?subject=Sponsoring ${siteConfig.name}`}>
+          <a className="text-accent underline" data-analytics-event="sponsor_click" data-placement="media_kit" href={`mailto:${SPONSOR_EMAIL}?subject=Sponsoring ${siteConfig.name}`}>
             {SPONSOR_EMAIL}
           </a>{' '}
           with your product and the dates you have in mind, and we&rsquo;ll send the current

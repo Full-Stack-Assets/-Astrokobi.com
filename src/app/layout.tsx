@@ -6,8 +6,9 @@ import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd } from '@/lib/stru
 import { SubscribeForm } from '@/components/SubscribeForm';
 import { AdSlot } from '@/components/AdSlot';
 import { AffiliateDisclosure } from '@/components/mdx';
-import { ADSENSE_CLIENT, ADSENSE_SLOT_FOOTER } from '@/lib/ads';
+import { ADSENSE_CLIENT, ADSENSE_PUBLISHER_ID, ADSENSE_SLOT_FOOTER } from '@/lib/ads';
 import { siteConfig } from '@/site.config';
+import { PortfolioAnalytics } from '@/components/PortfolioAnalytics';
 import { shouldDisclose } from '@/lib/affiliate';
 import './globals.css';
 
@@ -40,13 +41,14 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
   },
-  other: { 'google-adsense-account': ADSENSE_CLIENT },
+  other: { 'google-adsense-account': ADSENSE_PUBLISHER_ID },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sora.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="relative">
+        <PortfolioAnalytics />
         {ADSENSE_CLIENT && (
           <Script
             async
