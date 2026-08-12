@@ -37,6 +37,9 @@ export function GearBox({
               href={amazonUrl(g.query)}
               target="_blank"
               rel="nofollow sponsored noopener noreferrer"
+              data-analytics-event="affiliate_click"
+              data-merchant="amazon"
+              data-placement="article_gear_box"
               className="font-display font-semibold leading-snug hover:text-accent"
             >
               {g.name} →
