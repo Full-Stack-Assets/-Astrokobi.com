@@ -2,7 +2,7 @@
 
 This repo is a self-contained, hourly auto-blog engine. Everything that makes it
 *this* site lives in **`src/site.config.ts`** — change that one file (plus a few
-secrets and a Vercel project/domain) and you have a new site in a different
+secrets and a GitHub Pages custom domain) and you have a new site in a different
 niche running the same engine.
 
 ## 1. Clone the template
@@ -29,12 +29,12 @@ This is the only file you must edit. Set:
 
 Nothing else needs editing for a basic site.
 
-## 3. Connect Vercel + a domain
+## 3. Connect GitHub Pages + a domain
 
-1. Import the new repo into Vercel (it auto-detects Next.js).
-2. Add a domain in Vercel → Settings → Domains (and point your registrar's DNS at it).
-3. Optionally set `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_ADSENSE_CLIENT` as env
-   vars to override the config per-deploy.
+1. In the new repository, open **Settings → Pages** and choose **GitHub Actions** as the source.
+2. Add the custom domain there and point the registrar records to GitHub Pages.
+3. Add `public/CNAME` with that exact domain so every exported artifact preserves it.
+4. Set `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_NEWSLETTER_SUBSCRIBE_URL`, and optional monetization values as Actions variables.
 
 ## 4. Set the GitHub Actions secrets
 
@@ -48,17 +48,18 @@ Actions**:
 - `BRAVE_API_KEY`, `PEXELS_API_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`
   — optional; any unset source is skipped (Brave/Reddit can be dropped entirely,
   and `imageProvider: 'openverse'` needs no image key).
-- Optional integrations: `VERCEL_DEPLOY_HOOK_URL` (force a redeploy per post),
-  `BLUESKY_*` / `MASTODON_*` / `DEVTO_API_KEY` (syndication), `BUTTONDOWN_API_KEY`
-  (newsletter). All inert until set.
+- Optional integrations: `BLUESKY_*` / `MASTODON_*` / `DEVTO_API_KEY`
+  (syndication), `NEXT_PUBLIC_NEWSLETTER_SUBSCRIBE_URL` (hosted signup), and
+  `BUTTONDOWN_API_KEY` (digest drafts). All are inert until set.
 
 See `.env.example` for the full list.
 
 ## 5. Launch
 
 The hourly workflow (`.github/workflows/generate.yml`) runs on its own once
-secrets are set. To kick the first post manually: Actions → "Hourly Post
-Generation" → **Run workflow**. The site auto-deploys on each commit.
+secrets are set. To kick the first candidate manually: Actions → "Hourly Post
+Candidate Generation" → **Run workflow**. Review the generated content, then
+manually run "Deploy GitHub Pages" to authorize publication.
 
 ## Notes
 

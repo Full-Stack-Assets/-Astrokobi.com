@@ -50,7 +50,7 @@ async function readPosts(): Promise<Post[]> {
 export function listPosts(): Promise<Post[]> {
   // Static generation calls this once per route. Reusing the parsed corpus in
   // production avoids rereading and reparsing every MDX file for each of the
-  // site's tag and article pages, which can exceed Render's per-page timeout.
+  // site's tag and article pages, which can exceed the static build budget.
   if (process.env.NODE_ENV === 'production') {
     productionPostsPromise ??= readPosts();
     return productionPostsPromise;

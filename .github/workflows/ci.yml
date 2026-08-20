@@ -4,7 +4,7 @@ name: CI
 # compile and a full `next build` (which prerenders every post, catching bad
 # MDX like an unclosed <Question>/<FAQ> tag). Runs on every PR and on direct
 # pushes to main, so either path surfaces a break as a red check in the GitHub
-# UI instead of only showing up later as a failed Vercel deploy.
+# UI instead of only showing up later as a failed Pages deploy.
 on:
   pull_request:
     branches: [main]
@@ -29,6 +29,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Test generated-MDX sanitizer
+        run: npm run test:mdx-sanitize
 
       - name: Build (prerenders every post — catches malformed MDX)
         run: npm run build
