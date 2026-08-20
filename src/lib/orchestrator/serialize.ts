@@ -34,6 +34,10 @@ export function serialize(post: GeneratedPost, date: Date = new Date()): string 
  */
 export function sanitizeBody(body: string): string {
   return body
+    // JSON-shaped model output can preserve escaped attribute delimiters as
+    // literal backslashes (for example, <Callout type=\"warning\">). JSX
+    // attributes require the delimiters themselves to be unescaped.
+    .replace(/<[A-Z][A-Za-z]*\b[^>]*>/g, (tag) => tag.replace(/\\"/g, '"'))
     // `Answer` is not part of the MDX component contract. Some models invent
     // it as a wrapper inside Question; the answer text is already the intended
     // Question child, so remove only the unsupported wrapper tags.

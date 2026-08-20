@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "tinacms dev -c \"next dev\"",
     "build": "bash scripts/build.sh",
+    "build:server": "DEPLOY_RUNTIME=server bash scripts/build.sh && node scripts/prepare-standalone.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:mdx-sanitize": "tsx scripts/test-mdx-sanitize.ts",
     "generate": "tsx scripts/run-local.ts",
     "seed": "tsx scripts/seed.ts",
     "digest": "tsx scripts/newsletter-digest.ts"
@@ -15,8 +17,6 @@
   "dependencies": {
     "@octokit/rest": "^21.0.2",
     "@tinacms/cli": "^2.1.8",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
     "cheerio": "^1.0.0",
     "gray-matter": "^4.0.3",
     "next": "^15.0.3",

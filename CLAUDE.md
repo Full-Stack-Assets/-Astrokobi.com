@@ -76,8 +76,8 @@ npx tsx scripts/smoke-test.ts   # hit every source fetcher against live APIs
 `npm run build` goes through **`scripts/build.sh`**, which skips the TinaCMS
 cloud build when `NEXT_PUBLIC_TINA_CLIENT_ID` / `TINA_TOKEN` are unset
 (self-hosted/local-filesystem mode) and then runs `next build`. Don't replace it
-with a bare `next build` — Vercel's `buildCommand` (`vercel.json`) calls
-`npm run build` on purpose.
+with a bare `next build`; the Pages workflow calls `npm run build` so this
+failure handling remains part of the deployment gate.
 
 There is **no test runner** configured. `scripts/smoke-test.ts` is the closest
 thing to integration testing; verify changes via `npm run generate -- --dry`,
@@ -180,11 +180,8 @@ App Router. Notable routes:
   related posts, sources, ads). `categories/[category]`, `tags/[tag]` — taxonomy.
 - `about`, `stats` (reads the topic log), `vaporloop` (a standalone demo page).
 - `feed.xml/route.ts` (RSS), `sitemap.ts`, `robots.ts`, `ads.txt/route.ts`.
-- `api/cron/generate/route.ts` — `GET`/`POST` that runs the pipeline; authorized
-  via `Authorization: Bearer $CRON_SECRET` (or `?secret=`). `nodejs` runtime,
-  `maxDuration = 300`. This is the serverless alternative to the GitHub Action.
-- `api/subscribe/route.ts` — newsletter signup (per-instance in-memory rate
-  limit, origin check).
+- Newsletter signup links to `NEXT_PUBLIC_NEWSLETTER_SUBSCRIBE_URL`; the static
+  site exposes no write-capable API routes.
 
 Branding/SEO derive from `siteConfig` via `src/lib/structured-data.ts`
 (`SITE_URL`/`SITE_NAME`/`SITE_DESCRIPTION`, with `NEXT_PUBLIC_SITE_URL` override —
@@ -197,12 +194,11 @@ note the empty-string guard, since unset CI secrets arrive as `""`).
   then commit & push with a rebase-retry loop. It registers a **union merge
   driver** (`scripts/merge-topic-log.mjs`, mapped in `.gitattributes`) so
   concurrent appends to `content/.topic-log.json` auto-merge instead of
-  conflicting. A `concurrency` group prevents overlapping ticks. Optional
-  `VERCEL_DEPLOY_HOOK_URL` fires a redeploy (only on the production branch).
-- **`.github/workflows/newsletter.yml`** runs the weekly digest.
-- Hosting: Vercel (auto-deploys on push) or Cloudflare Pages as a static host.
-  **Do not run the pipeline inside a Cloudflare Pages Function** — its ~30s CPU
-  limit is below the pipeline's 30–90s runtime; let the Action generate.
+  conflicting. A `concurrency` group prevents overlapping ticks.
+- **`.github/workflows/newsletter.yml`** creates the weekly digest draft for
+  human review.
+- **`.github/workflows/pages.yml`** is the approved GitHub Pages deployment.
+  Candidate bot commits stay on review hold until a human dispatches it.
 
 ## Configuration & secrets
 

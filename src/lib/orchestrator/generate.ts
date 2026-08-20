@@ -175,8 +175,8 @@ export async function generate(
   // rejects an oversized single request outright (413 "request too large").
   // The standard cap of 3584 plus the trimmed research prompt (~3.5-4K tokens)
   // stays under that ceiling. Long-form runs still need real headroom for a
-  // ~2200-word JSON payload; they exceed the primary's budget by design and
-  // ride the 413 failover to the fallback model (30K TPM).
+  // ~2200-word JSON payload; they exceed the primary's standard envelope by
+  // design and ride the 413 failover to the separately provisioned fallback.
   const maxTokens = opts.targetWords || opts.minBodyChars ? 16384 : 3584;
   let lastError = '';
 
